@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/sbin/bash
 
 # LLM Council - Start script
 
