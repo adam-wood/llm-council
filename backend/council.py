@@ -3,11 +3,13 @@
 from typing import List, Dict, Any, Tuple
 from .openrouter import query_models_parallel, query_model
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
+from .prompt_storage import get_prompt_for_model
 
 
 async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
     """
     Stage 1: Collect individual responses from all council models.
+    Each model uses its own custom prompt (or default).
 
     Args:
         user_query: The user's question
@@ -15,14 +17,33 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
     Returns:
         List of dicts with 'model' and 'response' keys
     """
-    messages = [{"role": "user", "content": user_query}]
+    import asyncio
 
-    # Query all models in parallel
-    responses = await query_models_parallel(COUNCIL_MODELS, messages)
+    # Create tasks for each model with their specific prompts
+    async def query_with_model_prompt(model: str) -> tuple[str, Dict[str, Any]]:
+        # Get model-specific prompt (falls back to default)
+        stage1_prompt = get_prompt_for_model(model, 'stage1')
+        stage1_template = stage1_prompt['template']
+
+        # Format the prompt
+        prompt = stage1_template.format(user_query=user_query)
+        messages = [{"role": "user", "content": prompt}]
+
+        # Query the model
+        response = await query_model(model, messages)
+        return model, response
+
+    # Query all models in parallel with their individual prompts
+    tasks = [query_with_model_prompt(model) for model in COUNCIL_MODELS]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
 
     # Format results
     stage1_results = []
-    for model, response in responses.items():
+    for result in results:
+        if isinstance(result, Exception):
+            # Skip failed queries
+            continue
+        model, response = result
         if response is not None:  # Only include successful responses
             stage1_results.append({
                 "model": model,
@@ -55,51 +76,42 @@ async def stage2_collect_rankings(
         for label, result in zip(labels, stage1_results)
     }
 
-    # Build the ranking prompt
+    # Build the anonymized responses text (same for all models)
     responses_text = "\n\n".join([
         f"Response {label}:\n{result['response']}"
         for label, result in zip(labels, stage1_results)
     ])
 
-    ranking_prompt = f"""You are evaluating different responses to the following question:
+    # Create tasks for each model with their specific prompts
+    async def query_ranking_with_model_prompt(model: str) -> tuple[str, Dict[str, Any]]:
+        # Get model-specific prompt (falls back to default)
+        stage2_prompt = get_prompt_for_model(model, 'stage2')
+        stage2_template = stage2_prompt['template']
 
-Question: {user_query}
+        # Format the prompt template
+        ranking_prompt = stage2_template.format(
+            user_query=user_query,
+            responses_text=responses_text
+        )
 
-Here are the responses from different models (anonymized):
+        messages = [{"role": "user", "content": ranking_prompt}]
 
-{responses_text}
+        # Query the model
+        response = await query_model(model, messages)
+        return model, response
 
-Your task:
-1. First, evaluate each response individually. For each response, explain what it does well and what it does poorly.
-2. Then, at the very end of your response, provide a final ranking.
-
-IMPORTANT: Your final ranking MUST be formatted EXACTLY as follows:
-- Start with the line "FINAL RANKING:" (all caps, with colon)
-- Then list the responses from best to worst as a numbered list
-- Each line should be: number, period, space, then ONLY the response label (e.g., "1. Response A")
-- Do not add any other text or explanations in the ranking section
-
-Example of the correct format for your ENTIRE response:
-
-Response A provides good detail on X but misses Y...
-Response B is accurate but lacks depth on Z...
-Response C offers the most comprehensive answer...
-
-FINAL RANKING:
-1. Response C
-2. Response A
-3. Response B
-
-Now provide your evaluation and ranking:"""
-
-    messages = [{"role": "user", "content": ranking_prompt}]
-
-    # Get rankings from all council models in parallel
-    responses = await query_models_parallel(COUNCIL_MODELS, messages)
+    # Query all models in parallel with their individual prompts
+    import asyncio
+    tasks = [query_ranking_with_model_prompt(model) for model in COUNCIL_MODELS]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
 
     # Format results
     stage2_results = []
-    for model, response in responses.items():
+    for result in results:
+        if isinstance(result, Exception):
+            # Skip failed queries
+            continue
+        model, response = result
         if response is not None:
             full_text = response.get('content', '')
             parsed = parse_ranking_from_text(full_text)
@@ -128,6 +140,10 @@ async def stage3_synthesize_final(
     Returns:
         Dict with 'model' and 'response' keys
     """
+    # Get chairman-specific prompt (falls back to default)
+    stage3_prompt = get_prompt_for_model(CHAIRMAN_MODEL, 'stage3')
+    stage3_template = stage3_prompt['template']
+
     # Build comprehensive context for chairman
     stage1_text = "\n\n".join([
         f"Model: {result['model']}\nResponse: {result['response']}"
@@ -139,22 +155,12 @@ async def stage3_synthesize_final(
         for result in stage2_results
     ])
 
-    chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question, and then ranked each other's responses.
-
-Original Question: {user_query}
-
-STAGE 1 - Individual Responses:
-{stage1_text}
-
-STAGE 2 - Peer Rankings:
-{stage2_text}
-
-Your task as Chairman is to synthesize all of this information into a single, comprehensive, accurate answer to the user's original question. Consider:
-- The individual responses and their insights
-- The peer rankings and what they reveal about response quality
-- Any patterns of agreement or disagreement
-
-Provide a clear, well-reasoned final answer that represents the council's collective wisdom:"""
+    # Format the prompt template
+    chairman_prompt = stage3_template.format(
+        user_query=user_query,
+        stage1_text=stage1_text,
+        stage2_text=stage2_text
+    )
 
     messages = [{"role": "user", "content": chairman_prompt}]
 

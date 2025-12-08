@@ -1,0 +1,267 @@
+.prompt-manager {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.prompt-manager.loading,
+.prompt-manager.error {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.prompt-header {
+  margin-bottom: 24px;
+}
+
+.prompt-header h1 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 28px;
+}
+
+.prompt-subtitle {
+  margin: 0;
+  color: #7f8c8d;
+  font-size: 14px;
+}
+
+.save-message {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.model-selector {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.model-selector label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.model-selector select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+.model-selector select:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.model-hint {
+  margin-top: 8px;
+}
+
+.override-badge,
+.default-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.override-badge {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.default-badge {
+  background-color: #e7f3ff;
+  color: #004085;
+  border: 1px solid #b8daff;
+}
+
+.stage-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.stage-tab {
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  color: #7f8c8d;
+  transition: all 0.2s;
+  margin-bottom: -2px;
+}
+
+.stage-tab:hover {
+  color: #4a90e2;
+  background-color: #f8f9fa;
+}
+
+.stage-tab.active {
+  color: #4a90e2;
+  border-bottom-color: #4a90e2;
+}
+
+.prompt-editor {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.prompt-field {
+  margin-bottom: 24px;
+}
+
+.prompt-field label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.prompt-field input[type='text'] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.prompt-field input[type='text']:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.template-info {
+  font-size: 12px;
+  color: #7f8c8d;
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+.template-editor {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: 'Courier New', Courier, monospace;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.template-editor:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.prompt-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.prompt-field textarea:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.prompt-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.action-group {
+  display: flex;
+  gap: 12px;
+}
+
+.prompt-actions button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.prompt-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: #4a90e2;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #357abd;
+}
+
+.btn-secondary {
+  background-color: #e0e0e0;
+  color: #2c3e50;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #d0d0d0;
+}
+
+.btn-warning {
+  background-color: #f39c12;
+  color: white;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background-color: #d68910;
+}
+
+.btn-danger {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #c0392b;
+}

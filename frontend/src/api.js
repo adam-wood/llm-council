@@ -112,4 +112,84 @@ export const api = {
       }
     }
   },
+
+  /**
+   * Get the list of models.
+   */
+  async getModels() {
+    const response = await fetch(`${API_BASE}/api/models`);
+    if (!response.ok) {
+      throw new Error('Failed to get models');
+    }
+    return response.json();
+  },
+
+  /**
+   * Get all active prompts.
+   * @param {string} model - Optional model identifier
+   */
+  async getPrompts(model = null) {
+    const url = model
+      ? `${API_BASE}/api/prompts?model=${encodeURIComponent(model)}`
+      : `${API_BASE}/api/prompts`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to get prompts');
+    }
+    return response.json();
+  },
+
+  /**
+   * Update a specific stage's prompt.
+   * @param {string} stage - The stage to update ('stage1', 'stage2', or 'stage3')
+   * @param {object} promptData - The prompt configuration
+   * @param {string} model - Optional model identifier for model-specific prompt
+   */
+  async updatePrompt(stage, promptData, model = null) {
+    const url = model
+      ? `${API_BASE}/api/prompts/${stage}?model=${encodeURIComponent(model)}`
+      : `${API_BASE}/api/prompts/${stage}`;
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(promptData),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update prompt');
+    }
+    return response.json();
+  },
+
+  /**
+   * Reset a specific stage's prompt to default.
+   * @param {string} stage - The stage to reset
+   * @param {string} model - Optional model identifier for model-specific prompt
+   */
+  async resetPrompt(stage, model = null) {
+    const url = model
+      ? `${API_BASE}/api/prompts/${stage}?model=${encodeURIComponent(model)}`
+      : `${API_BASE}/api/prompts/${stage}`;
+    const response = await fetch(url, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to reset prompt');
+    }
+    return response.json();
+  },
+
+  /**
+   * Reset all prompts to defaults.
+   */
+  async resetAllPrompts() {
+    const response = await fetch(`${API_BASE}/api/prompts`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to reset all prompts');
+    }
+    return response.json();
+  },
 };
