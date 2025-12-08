@@ -2,12 +2,12 @@
 
 ## Phase 1: Prompt Management & Customization
 
-- [ ] **Expose prompts in frontend UI**
+- [x] **Expose prompts in frontend UI** ✅ (v0.2.0)
   - Display current Stage 1, Stage 2, and Stage 3 prompts
   - Add edit/preview mode for prompt modification
   - Real-time validation of prompt changes
 
-- [ ] **Support per-model prompt customization**
+- [x] **Support per-model prompt customization** ✅ (v0.2.0)
   - Refactor prompt system to allow model-specific prompts
   - Create prompt template system with variable substitution
   - Add fallback to default prompts if model-specific prompt not defined
