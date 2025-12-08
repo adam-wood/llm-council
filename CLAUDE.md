@@ -6,6 +6,8 @@ This file contains technical details, architectural decisions, and important imp
 
 LLM Council is a 3-stage deliberation system where multiple LLMs collaboratively answer user questions. The key innovation is anonymized peer review in Stage 2, preventing models from playing favorites.
 
+**Evolution to Board of Directors:** The project now supports an agent-based system where each LLM can be configured as a specialized board member (Ethics Advisor, Tech Expert, etc.) with custom prompts and roles, transforming the generic council into a personal board of advisors.
+
 ## Architecture
 
 ### Backend Structure (`backend/`)
@@ -22,23 +24,50 @@ LLM Council is a 3-stage deliberation system where multiple LLMs collaboratively
 - Returns dict with 'content' and optional 'reasoning_details'
 - Graceful degradation: returns None on failure, continues with successful responses
 
-**`council.py`** - The Core Logic
-- `stage1_collect_responses()`: Parallel queries to all council models
+**`council.py`** - The Core Logic (Agent-Aware as of v0.3.0)
+- `stage1_collect_responses()`:
+  - Loads active agents from storage (falls back to COUNCIL_MODELS if none)
+  - Each agent uses their custom prompt with priority: agent-specific → model-specific → default
+  - Returns list with `agent_id`, `agent_title`, `model`, and `response`
 - `stage2_collect_rankings()`:
   - Anonymizes responses as "Response A, B, C, etc."
-  - Creates `label_to_model` mapping for de-anonymization
-  - Prompts models to evaluate and rank (with strict format requirements)
+  - Creates `label_to_model` mapping with both `agent_title` and `model` for de-anonymization
+  - Each agent evaluates with their custom prompt (same fallback hierarchy)
   - Returns tuple: (rankings_list, label_to_model_dict)
-  - Each ranking includes both raw text and `parsed_ranking` list
-- `stage3_synthesize_final()`: Chairman synthesizes from all responses + rankings
+  - Each ranking includes `agent_id`, `agent_title`, `model`, raw text, and `parsed_ranking` list
+- `stage3_synthesize_final()`:
+  - Uses designated chairman agent or falls back to CHAIRMAN_MODEL
+  - Chairman uses their custom prompt with same fallback hierarchy
+  - Context includes agent titles instead of raw model names for readability
+  - Returns dict with `agent_title`, `model`, and `response`
 - `parse_ranking_from_text()`: Extracts "FINAL RANKING:" section, handles both numbered lists and plain format
-- `calculate_aggregate_rankings()`: Computes average rank position across all peer evaluations
+- `calculate_aggregate_rankings()`: Computes average rank position by agent_title across all peer evaluations
 
 **`storage.py`**
 - JSON-based conversation storage in `data/conversations/`
 - Each conversation: `{id, created_at, messages[]}`
 - Assistant messages contain: `{role, stage1, stage2, stage3}`
 - Note: metadata (label_to_model, aggregate_rankings) is NOT persisted to storage, only returned via API
+
+**`agent_storage.py`** (v0.3.0)
+- JSON-based agent storage in `data/agents.json`
+- Agent structure: `{id, title, role, model, prompts{}, active, created_at, updated_at}`
+- CRUD operations: create, get, update, delete agents
+- Chairman designation separate from council members
+- `initialize_default_agents()` creates 4 pre-configured board members
+- Falls back to `COUNCIL_MODELS` in config if no agents exist
+
+**`prompt_storage.py`** (v0.2.0)
+- JSON-based prompt storage in `data/prompts.json`
+- Structure: `{defaults: {stage1, stage2, stage3}, models: {model_id: {stage1, stage2, stage3}}}`
+- Supports default prompts and per-model overrides
+- `get_prompt_for_model()` implements fallback chain: model-specific → default
+- All prompts use template variables like `{user_query}`, `{responses_text}`, etc.
+
+**`prompts.py`** (v0.2.0)
+- Defines `DEFAULT_PROMPTS` for all three stages
+- Each prompt includes: name, description, template, and notes about variables
+- Provides `get_stage_prompt()` for easy prompt retrieval
 
 **`main.py`**
 - FastAPI app with CORS enabled for localhost:5173 and localhost:3000
@@ -77,6 +106,54 @@ LLM Council is a 3-stage deliberation system where multiple LLMs collaboratively
 - Primary color: #4a90e2 (blue)
 - Global markdown styling in `index.css` with `.markdown-content` class
 - 12px padding on all markdown content to prevent cluttered appearance
+
+## Agent System Architecture (v0.3.0)
+
+### Agent Configuration
+Agents are the foundation of the Board of Directors concept. Each agent represents a specialized advisor:
+
+**Agent Data Structure:**
+```json
+{
+  "id": "uuid",
+  "title": "Ethics & Values Advisor",
+  "role": "Provides ethical guidance...",
+  "model": "anthropic/claude-sonnet-4.5",
+  "prompts": {
+    "stage1": "You are the Ethics & Values Advisor...",
+    "stage2": "optional custom stage2 prompt",
+    "stage3": "optional custom stage3 prompt"
+  },
+  "active": true,
+  "created_at": "ISO timestamp",
+  "updated_at": "ISO timestamp"
+}
+```
+
+**Prompt Fallback Hierarchy:**
+When an agent needs a prompt, the system checks in this order:
+1. Agent-specific prompt (from agent's `prompts` dict)
+2. Model-specific prompt (from prompt_storage for that model)
+3. Default prompt (from DEFAULT_PROMPTS)
+
+This allows maximum flexibility: define prompts per-agent, per-model, or use sensible defaults.
+
+**Chairman vs Council:**
+- Council members (agents) participate in all 3 stages
+- Chairman is designated from existing agents (or uses fallback CHAIRMAN_MODEL)
+- Chairman only participates in Stage 3 synthesis
+
+**Legacy Fallback:**
+If no agents are configured, the system falls back to `COUNCIL_MODELS` from config, creating pseudo-agents on-the-fly with model names as titles.
+
+### Default Agent Templates
+Four pre-configured agents demonstrate the Board of Directors concept:
+1. **Ethics & Values Advisor** - Evaluates moral implications
+2. **Technology & Innovation Expert** - Analyzes technical feasibility
+3. **Leadership & Strategy Coach** - Provides strategic guidance
+4. **Financial & Business Advisor** - Evaluates economic impact
+
+Each has a role-aware Stage 1 prompt that instructs them to respond from their specialized perspective.
 
 ## Key Design Decisions
 

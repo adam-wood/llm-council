@@ -11,6 +11,7 @@ import asyncio
 
 from . import storage
 from . import prompt_storage
+from . import agent_storage
 from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 
@@ -42,6 +43,24 @@ class UpdatePromptRequest(BaseModel):
     description: str
     template: str
     notes: str = ""
+
+
+class CreateAgentRequest(BaseModel):
+    """Request to create a new agent."""
+    title: str
+    role: str
+    model: str
+    prompts: Dict[str, str] = {}
+    active: bool = True
+
+
+class UpdateAgentRequest(BaseModel):
+    """Request to update an agent."""
+    title: str = None
+    role: str = None
+    model: str = None
+    prompts: Dict[str, str] = None
+    active: bool = None
 
 
 class ConversationMetadata(BaseModel):
@@ -202,6 +221,95 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
             "Connection": "keep-alive",
         }
     )
+
+
+@app.get("/api/agents")
+async def list_agents(active_only: bool = False):
+    """
+    Get all agent configurations.
+
+    Args:
+        active_only: If True, only return active agents
+    """
+    if active_only:
+        return agent_storage.get_active_agents()
+    return agent_storage.get_all_agents()
+
+
+@app.post("/api/agents")
+async def create_agent(request: CreateAgentRequest):
+    """Create a new agent configuration."""
+    agent = agent_storage.create_agent(
+        title=request.title,
+        role=request.role,
+        model=request.model,
+        prompts=request.prompts,
+        active=request.active
+    )
+    return agent
+
+
+@app.post("/api/agents/initialize")
+async def initialize_default_agents():
+    """Initialize default agent templates."""
+    agents = agent_storage.initialize_default_agents()
+    return {"agents": agents, "count": len(agents)}
+
+
+@app.get("/api/agents/chairman")
+async def get_chairman_agent():
+    """Get the current chairman agent configuration."""
+    chairman = agent_storage.get_chairman()
+    return {"chairman": chairman}
+
+
+@app.put("/api/agents/chairman/{agent_id}")
+async def set_chairman_agent(agent_id: str):
+    """Set which agent is the chairman."""
+    success = agent_storage.set_chairman(agent_id if agent_id != "default" else None)
+    if not success:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return {"success": True, "chairman": agent_id}
+
+
+@app.get("/api/agents/{agent_id}")
+async def get_agent(agent_id: str):
+    """Get a specific agent configuration."""
+    agent = agent_storage.get_agent_by_id(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return agent
+
+
+@app.put("/api/agents/{agent_id}")
+async def update_agent(agent_id: str, request: UpdateAgentRequest):
+    """Update an agent configuration."""
+    # Build updates dict from non-None fields
+    updates = {}
+    if request.title is not None:
+        updates["title"] = request.title
+    if request.role is not None:
+        updates["role"] = request.role
+    if request.model is not None:
+        updates["model"] = request.model
+    if request.prompts is not None:
+        updates["prompts"] = request.prompts
+    if request.active is not None:
+        updates["active"] = request.active
+
+    agent = agent_storage.update_agent(agent_id, updates)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return agent
+
+
+@app.delete("/api/agents/{agent_id}")
+async def delete_agent(agent_id: str):
+    """Delete an agent configuration."""
+    success = agent_storage.delete_agent(agent_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return {"success": True}
 
 
 @app.get("/api/models")

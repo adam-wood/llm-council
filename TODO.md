@@ -12,7 +12,7 @@
   - Create prompt template system with variable substitution
   - Add fallback to default prompts if model-specific prompt not defined
 
-- [ ] **Agent configuration system**
+- [x] **Agent configuration system** ✅ (v0.3.0)
   - Define agent structure: `{title, role, model, stage1_prompt, stage2_prompt}`
   - Example agents: Ethics Advisor, Leadership Coach, Technology Strategist, Financial Advisor, Career Mentor
   - Store agent configurations in persistent storage (JSON/YAML)

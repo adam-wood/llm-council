@@ -1,18 +1,44 @@
-# LLM Council
+# LLM Council → Personal Board of Directors
 
 ![llmcouncil](header.jpg)
 
-The idea of this repo is that instead of asking a question to your favorite LLM provider (e.g. OpenAI GPT 5.1, Google Gemini 3.0 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4, eg.c), you can group them into your "LLM Council". This repo is a simple, local web app that essentially looks like ChatGPT except it uses OpenRouter to send your query to multiple LLMs, it then asks them to review and rank each other's work, and finally a Chairman LLM produces the final response.
+## About This Project
 
-In a bit more detail, here is what happens when you submit a query:
+This project began as **[LLM Council](https://github.com/karpathy/llm-council)** by **[Andrej Karpathy](https://github.com/karpathy)** - a brilliant "vibe code" Saturday hack exploring how multiple LLMs can deliberate together through a 3-stage process of individual responses, peer review, and synthesis.
 
-1. **Stage 1: First opinions**. The user query is given to all LLMs individually, and the responses are collected. The individual responses are shown in a "tab view", so that the user can inspect them all one by one.
-2. **Stage 2: Review**. Each individual LLM is given the responses of the other LLMs. Under the hood, the LLM identities are anonymized so that the LLM can't play favorites when judging their outputs. The LLM is asked to rank them in accuracy and insight.
-3. **Stage 3: Final response**. The designated Chairman of the LLM Council takes all of the model's responses and compiles them into a single final answer that is presented to the user.
+**This fork extends that concept** into a **Personal Board of Directors** - where instead of generic LLMs, you configure specialized AI agents (Ethics Advisor, Technology Expert, Leadership Coach, Financial Advisor, etc.) that provide perspective-aware guidance on your questions and decisions.
 
-## Vibe Code Alert
+## Original Concept (Credit: Andrej Karpathy)
 
-This project was 99% vibe coded as a fun Saturday hack because I wanted to explore and evaluate a number of LLMs side by side in the process of [reading books together with LLMs](https://x.com/karpathy/status/1990577951671509438). It's nice and useful to see multiple responses side by side, and also the cross-opinions of all LLMs on each other's outputs. I'm not going to support it in any way, it's provided here as is for other people's inspiration and I don't intend to improve it. Code is ephemeral now and libraries are over, ask your LLM to change it in whatever way you like.
+Instead of asking a single LLM, you query multiple LLMs working as a council:
+
+1. **Stage 1: Individual Opinions** - Each LLM responds to your question independently
+2. **Stage 2: Anonymized Peer Review** - LLMs rank each other's responses (identities hidden to prevent bias)
+3. **Stage 3: Chairman Synthesis** - A designated chairman synthesizes the collective wisdom into a final answer
+
+This elegantly surfaces multiple perspectives and cross-evaluations, which Andrej created for [reading books together with LLMs](https://x.com/karpathy/status/1990577951671509438).
+
+## What's New: Board of Directors Evolution
+
+We're transforming the anonymous council into a **personal board of directors** with:
+
+✨ **Agent System** - Define specialized advisors with titles, roles, and custom prompts
+✨ **Prompt Management** - Fully customizable prompts for each stage, per-agent or globally
+✨ **Role-Aware Responses** - Agents respond from their expertise perspective (Ethics Advisor evaluates morally, Tech Expert evaluates technically, etc.)
+✨ **Persistent Configuration** - Your board composition and prompts are saved
+✨ **Default Templates** - Pre-configured advisors ready to use out of the box
+
+See [TODO.md](TODO.md) for the full roadmap including conversation memory, analytics, and advanced features.
+
+## How It Works
+
+When you submit a query to your board:
+
+1. **Stage 1: Expert Perspectives** - Each board member (agent) responds from their specialized viewpoint
+2. **Stage 2: Peer Evaluation** - Board members rank each other's responses anonymously
+3. **Stage 3: Synthesis** - Your designated chairman synthesizes all perspectives into actionable guidance
+
+All responses, rankings, and the final synthesis are visible for full transparency.
 
 ## Setup
 
@@ -42,9 +68,19 @@ OPENROUTER_API_KEY=sk-or-v1-...
 
 Get your API key at [openrouter.ai](https://openrouter.ai/). Make sure to purchase the credits you need, or sign up for automatic top up.
 
-### 3. Configure Models (Optional)
+### 3. Initialize Your Board (Optional)
 
-Edit `backend/config.py` to customize the council:
+**Option 1: Use Default Board**
+
+After starting the app, navigate to the Prompt Manager and click "Initialize Default Agents" to create 4 pre-configured board members:
+- Ethics & Values Advisor (Claude Sonnet 4.5)
+- Technology & Innovation Expert (GPT-5.1)
+- Leadership & Strategy Coach (Gemini 3 Pro)
+- Financial & Business Advisor (Grok 4)
+
+**Option 2: Keep Legacy Mode**
+
+Edit `backend/config.py` to use models directly without agents:
 
 ```python
 COUNCIL_MODELS = [
@@ -56,6 +92,8 @@ COUNCIL_MODELS = [
 
 CHAIRMAN_MODEL = "google/gemini-3-pro-preview"
 ```
+
+The system falls back to these models if no agents are configured.
 
 ## Running the Application
 
@@ -83,5 +121,55 @@ Then open http://localhost:5173 in your browser.
 
 - **Backend:** FastAPI (Python 3.10+), async httpx, OpenRouter API
 - **Frontend:** React + Vite, react-markdown for rendering
-- **Storage:** JSON files in `data/conversations/`
+- **Storage:** JSON files in `data/` (conversations, agents, prompts)
 - **Package Management:** uv for Python, npm for JavaScript
+
+## Key Features (v0.3.0)
+
+📋 **Agent Configuration System**
+- Define custom board members with titles, roles, and expertise areas
+- Per-agent custom prompts for each deliberation stage
+- Active/inactive agent management
+- Designate any agent as chairman
+
+🎨 **Prompt Management UI**
+- Edit prompts for all three deliberation stages
+- Default prompts with per-model overrides
+- Real-time preview and validation
+- Reset to defaults anytime
+
+💾 **Persistent Storage**
+- All configurations saved locally in JSON
+- Conversation history with full metadata
+- Import/export ready for future features
+
+## Project Structure
+
+```
+llm-council/
+├── backend/
+│   ├── agent_storage.py      # Agent CRUD operations
+│   ├── prompt_storage.py     # Prompt management
+│   ├── council.py            # 3-stage deliberation logic
+│   ├── openrouter.py         # OpenRouter API client
+│   └── main.py               # FastAPI server
+├── frontend/
+│   └── src/
+│       ├── components/
+│       │   ├── PromptManager.jsx  # Prompt editing UI
+│       │   └── ChatInterface.jsx  # Main chat interface
+│       └── api.js            # API client
+└── data/
+    ├── agents.json           # Agent configurations
+    ├── prompts.json          # Custom prompts
+    └── conversations/        # Chat history
+```
+
+## Contributing
+
+This is an active fork evolving the original concept. See [TODO.md](TODO.md) for the roadmap. Contributions welcome!
+
+## Credits
+
+- **Original Concept:** [Andrej Karpathy](https://github.com/karpathy) - [llm-council](https://github.com/karpathy/llm-council)
+- **Board of Directors Evolution:** This fork by [adam-wood](https://github.com/adam-wood)

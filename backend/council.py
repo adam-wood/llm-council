@@ -4,26 +4,42 @@ from typing import List, Dict, Any, Tuple
 from .openrouter import query_models_parallel, query_model
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 from .prompt_storage import get_prompt_for_model
+from . import agent_storage
 
 
 async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
     """
-    Stage 1: Collect individual responses from all council models.
-    Each model uses its own custom prompt (or default).
+    Stage 1: Collect individual responses from all council agents.
+    Each agent uses their custom prompt, or falls back to model/default prompts.
 
     Args:
         user_query: The user's question
 
     Returns:
-        List of dicts with 'model' and 'response' keys
+        List of dicts with 'agent', 'model', and 'response' keys
     """
     import asyncio
 
-    # Create tasks for each model with their specific prompts
-    async def query_with_model_prompt(model: str) -> tuple[str, Dict[str, Any]]:
-        # Get model-specific prompt (falls back to default)
-        stage1_prompt = get_prompt_for_model(model, 'stage1')
-        stage1_template = stage1_prompt['template']
+    # Load active agents, or fall back to config models
+    agents = agent_storage.get_active_agents()
+
+    # If no agents configured, use legacy model list
+    if not agents:
+        agents = [
+            {"id": f"legacy-{i}", "title": model, "model": model, "prompts": {}}
+            for i, model in enumerate(COUNCIL_MODELS)
+        ]
+
+    # Create tasks for each agent with their specific prompts
+    async def query_with_agent_prompt(agent: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, Any]]:
+        model = agent["model"]
+
+        # Priority: agent-specific prompt > model-specific prompt > default prompt
+        if "stage1" in agent.get("prompts", {}):
+            stage1_template = agent["prompts"]["stage1"]
+        else:
+            stage1_prompt = get_prompt_for_model(model, 'stage1')
+            stage1_template = stage1_prompt['template']
 
         # Format the prompt
         prompt = stage1_template.format(user_query=user_query)
@@ -31,10 +47,10 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
 
         # Query the model
         response = await query_model(model, messages)
-        return model, response
+        return agent, response
 
-    # Query all models in parallel with their individual prompts
-    tasks = [query_with_model_prompt(model) for model in COUNCIL_MODELS]
+    # Query all agents in parallel with their individual prompts
+    tasks = [query_with_agent_prompt(agent) for agent in agents]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     # Format results
@@ -43,10 +59,12 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
         if isinstance(result, Exception):
             # Skip failed queries
             continue
-        model, response = result
+        agent, response = result
         if response is not None:  # Only include successful responses
             stage1_results.append({
-                "model": model,
+                "agent_id": agent["id"],
+                "agent_title": agent.get("title", agent["model"]),
+                "model": agent["model"],
                 "response": response.get('content', '')
             })
 
@@ -70,23 +88,41 @@ async def stage2_collect_rankings(
     # Create anonymized labels for responses (Response A, Response B, etc.)
     labels = [chr(65 + i) for i in range(len(stage1_results))]  # A, B, C, ...
 
-    # Create mapping from label to model name
+    # Create mapping from label to agent title (for de-anonymization in UI)
     label_to_model = {
-        f"Response {label}": result['model']
+        f"Response {label}": {
+            "agent_title": result['agent_title'],
+            "model": result['model']
+        }
         for label, result in zip(labels, stage1_results)
     }
 
-    # Build the anonymized responses text (same for all models)
+    # Build the anonymized responses text (same for all agents)
     responses_text = "\n\n".join([
         f"Response {label}:\n{result['response']}"
         for label, result in zip(labels, stage1_results)
     ])
 
-    # Create tasks for each model with their specific prompts
-    async def query_ranking_with_model_prompt(model: str) -> tuple[str, Dict[str, Any]]:
-        # Get model-specific prompt (falls back to default)
-        stage2_prompt = get_prompt_for_model(model, 'stage2')
-        stage2_template = stage2_prompt['template']
+    # Load active agents for ranking
+    agents = agent_storage.get_active_agents()
+
+    # If no agents configured, use legacy model list
+    if not agents:
+        agents = [
+            {"id": f"legacy-{i}", "model": result["model"], "prompts": {}}
+            for i, result in enumerate(stage1_results)
+        ]
+
+    # Create tasks for each agent with their specific prompts
+    async def query_ranking_with_agent_prompt(agent: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, Any]]:
+        model = agent["model"]
+
+        # Priority: agent-specific prompt > model-specific prompt > default prompt
+        if "stage2" in agent.get("prompts", {}):
+            stage2_template = agent["prompts"]["stage2"]
+        else:
+            stage2_prompt = get_prompt_for_model(model, 'stage2')
+            stage2_template = stage2_prompt['template']
 
         # Format the prompt template
         ranking_prompt = stage2_template.format(
@@ -98,11 +134,11 @@ async def stage2_collect_rankings(
 
         # Query the model
         response = await query_model(model, messages)
-        return model, response
+        return agent, response
 
-    # Query all models in parallel with their individual prompts
+    # Query all agents in parallel with their individual prompts
     import asyncio
-    tasks = [query_ranking_with_model_prompt(model) for model in COUNCIL_MODELS]
+    tasks = [query_ranking_with_agent_prompt(agent) for agent in agents]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     # Format results
@@ -111,12 +147,14 @@ async def stage2_collect_rankings(
         if isinstance(result, Exception):
             # Skip failed queries
             continue
-        model, response = result
+        agent, response = result
         if response is not None:
             full_text = response.get('content', '')
             parsed = parse_ranking_from_text(full_text)
             stage2_results.append({
-                "model": model,
+                "agent_id": agent.get("id"),
+                "agent_title": agent.get("title", agent["model"]),
+                "model": agent["model"],
                 "ranking": full_text,
                 "parsed_ranking": parsed
             })
@@ -140,18 +178,29 @@ async def stage3_synthesize_final(
     Returns:
         Dict with 'model' and 'response' keys
     """
-    # Get chairman-specific prompt (falls back to default)
-    stage3_prompt = get_prompt_for_model(CHAIRMAN_MODEL, 'stage3')
-    stage3_template = stage3_prompt['template']
+    # Get chairman agent or use default
+    chairman = agent_storage.get_chairman()
+    if chairman:
+        chairman_model = chairman["model"]
+        # Priority: agent-specific prompt > model-specific prompt > default prompt
+        if "stage3" in chairman.get("prompts", {}):
+            stage3_template = chairman["prompts"]["stage3"]
+        else:
+            stage3_prompt = get_prompt_for_model(chairman_model, 'stage3')
+            stage3_template = stage3_prompt['template']
+    else:
+        chairman_model = CHAIRMAN_MODEL
+        stage3_prompt = get_prompt_for_model(chairman_model, 'stage3')
+        stage3_template = stage3_prompt['template']
 
     # Build comprehensive context for chairman
     stage1_text = "\n\n".join([
-        f"Model: {result['model']}\nResponse: {result['response']}"
+        f"{result['agent_title']}: {result['response']}"
         for result in stage1_results
     ])
 
     stage2_text = "\n\n".join([
-        f"Model: {result['model']}\nRanking: {result['ranking']}"
+        f"{result['agent_title']}: {result['ranking']}"
         for result in stage2_results
     ])
 
@@ -165,17 +214,19 @@ async def stage3_synthesize_final(
     messages = [{"role": "user", "content": chairman_prompt}]
 
     # Query the chairman model
-    response = await query_model(CHAIRMAN_MODEL, messages)
+    response = await query_model(chairman_model, messages)
 
     if response is None:
         # Fallback if chairman fails
         return {
-            "model": CHAIRMAN_MODEL,
+            "agent_title": chairman.get("title", "Chairman") if chairman else "Chairman",
+            "model": chairman_model,
             "response": "Error: Unable to generate final synthesis."
         }
 
     return {
-        "model": CHAIRMAN_MODEL,
+        "agent_title": chairman.get("title", "Chairman") if chairman else "Chairman",
+        "model": chairman_model,
         "response": response.get('content', '')
     }
 
@@ -216,22 +267,22 @@ def parse_ranking_from_text(ranking_text: str) -> List[str]:
 
 def calculate_aggregate_rankings(
     stage2_results: List[Dict[str, Any]],
-    label_to_model: Dict[str, str]
+    label_to_model: Dict[str, Dict[str, str]]
 ) -> List[Dict[str, Any]]:
     """
-    Calculate aggregate rankings across all models.
+    Calculate aggregate rankings across all agents.
 
     Args:
-        stage2_results: Rankings from each model
-        label_to_model: Mapping from anonymous labels to model names
+        stage2_results: Rankings from each agent
+        label_to_model: Mapping from anonymous labels to agent info {agent_title, model}
 
     Returns:
-        List of dicts with model name and average rank, sorted best to worst
+        List of dicts with agent info and average rank, sorted best to worst
     """
     from collections import defaultdict
 
-    # Track positions for each model
-    model_positions = defaultdict(list)
+    # Track positions for each agent (by agent_title)
+    agent_positions = defaultdict(list)
 
     for ranking in stage2_results:
         ranking_text = ranking['ranking']
@@ -241,15 +292,23 @@ def calculate_aggregate_rankings(
 
         for position, label in enumerate(parsed_ranking, start=1):
             if label in label_to_model:
-                model_name = label_to_model[label]
-                model_positions[model_name].append(position)
+                agent_info = label_to_model[label]
+                agent_title = agent_info["agent_title"]
+                agent_positions[agent_title].append(position)
 
-    # Calculate average position for each model
+    # Calculate average position for each agent
     aggregate = []
-    for model, positions in model_positions.items():
+    for agent_title, positions in agent_positions.items():
         if positions:
             avg_rank = sum(positions) / len(positions)
+            # Get model from label_to_model
+            model = next(
+                (info["model"] for label, info in label_to_model.items()
+                 if info["agent_title"] == agent_title),
+                ""
+            )
             aggregate.append({
+                "agent_title": agent_title,
                 "model": model,
                 "average_rank": round(avg_rank, 2),
                 "rankings_count": len(positions)
