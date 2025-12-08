@@ -10,7 +10,9 @@ import json
 import asyncio
 
 from . import storage
+from . import prompt_storage
 from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
+from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 
 app = FastAPI(title="LLM Council API")
 
@@ -32,6 +34,14 @@ class CreateConversationRequest(BaseModel):
 class SendMessageRequest(BaseModel):
     """Request to send a message in a conversation."""
     content: str
+
+
+class UpdatePromptRequest(BaseModel):
+    """Request to update a prompt."""
+    name: str
+    description: str
+    template: str
+    notes: str = ""
 
 
 class ConversationMetadata(BaseModel):
@@ -192,6 +202,83 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
             "Connection": "keep-alive",
         }
     )
+
+
+@app.get("/api/models")
+async def get_models():
+    """Get the list of council models and chairman."""
+    return {
+        "council": COUNCIL_MODELS,
+        "chairman": CHAIRMAN_MODEL,
+        "all": list(set(COUNCIL_MODELS + [CHAIRMAN_MODEL]))
+    }
+
+
+@app.get("/api/prompts")
+async def get_prompts(model: str = None):
+    """
+    Get all active prompts (custom or default).
+
+    Args:
+        model: Optional model identifier to get model-specific prompts
+    """
+    if model:
+        # Return prompts for specific model (with fallback to defaults)
+        return {
+            "stage1": prompt_storage.get_prompt_for_model(model, "stage1"),
+            "stage2": prompt_storage.get_prompt_for_model(model, "stage2"),
+            "stage3": prompt_storage.get_prompt_for_model(model, "stage3"),
+        }
+    else:
+        # Return all prompts (defaults and per-model overrides)
+        return prompt_storage.get_all_model_prompts()
+
+
+@app.put("/api/prompts/{stage}")
+async def update_prompt(stage: str, request: UpdatePromptRequest, model: str = None):
+    """
+    Update a specific stage's prompt (default or model-specific).
+
+    Args:
+        stage: The stage to update ('stage1', 'stage2', or 'stage3')
+        request: New prompt configuration
+        model: Optional model identifier for model-specific prompt
+    """
+    if stage not in ['stage1', 'stage2', 'stage3']:
+        raise HTTPException(status_code=400, detail="Invalid stage. Must be 'stage1', 'stage2', or 'stage3'")
+
+    prompt_data = {
+        "name": request.name,
+        "description": request.description,
+        "template": request.template,
+        "notes": request.notes
+    }
+
+    updated_prompts = prompt_storage.update_prompt(stage, prompt_data, model)
+    return updated_prompts
+
+
+@app.delete("/api/prompts/{stage}")
+async def reset_prompt(stage: str, model: str = None):
+    """
+    Reset a specific stage's prompt to default.
+
+    Args:
+        stage: The stage to reset ('stage1', 'stage2', or 'stage3')
+        model: Optional model identifier for model-specific prompt
+    """
+    if stage not in ['stage1', 'stage2', 'stage3']:
+        raise HTTPException(status_code=400, detail="Invalid stage. Must be 'stage1', 'stage2', or 'stage3'")
+
+    updated_prompts = prompt_storage.reset_prompt(stage, model)
+    return updated_prompts
+
+
+@app.delete("/api/prompts")
+async def reset_all_prompts():
+    """Reset all prompts to defaults."""
+    default_prompts = prompt_storage.reset_all_prompts()
+    return default_prompts
 
 
 if __name__ == "__main__":

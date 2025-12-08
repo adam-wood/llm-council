@@ -18,8 +18,38 @@
   color: #333;
 }
 
+.view-switcher {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.view-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  color: #666;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.view-btn:hover {
+  background: #f0f0f0;
+  border-color: #ccc;
+}
+
+.view-btn.active {
+  background: #4a90e2;
+  border-color: #4a90e2;
+  color: white;
+}
+
 .new-conversation-btn {
-  width: 100%;
+  margin: 0 16px 8px 16px;
   padding: 10px;
   background: #4a90e2;
   border: 1px solid #4a90e2;
@@ -75,4 +105,15 @@
 .conversation-meta {
   color: #999;
   font-size: 12px;
+}
+
+.prompts-sidebar-info {
+  padding: 16px;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.prompts-sidebar-info p {
+  margin: 0;
 }
