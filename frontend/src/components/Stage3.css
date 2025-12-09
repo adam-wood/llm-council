@@ -10,12 +10,23 @@
   border: 1px solid #c8e6c8;
 }
 
+.chairman-info {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
 .chairman-label {
   color: #2d8a2d;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.chairman-model {
+  color: #888;
   font-size: 12px;
   font-family: monospace;
-  margin-bottom: 12px;
-  font-weight: 600;
 }
 
 .final-text {

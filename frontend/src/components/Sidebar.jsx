@@ -21,6 +21,12 @@ export default function Sidebar({
             Conversations
           </button>
           <button
+            className={`view-btn ${currentView === 'agents' ? 'active' : ''}`}
+            onClick={() => onViewChange('agents')}
+          >
+            Manage Agents
+          </button>
+          <button
             className={`view-btn ${currentView === 'prompts' ? 'active' : ''}`}
             onClick={() => onViewChange('prompts')}
           >
@@ -58,6 +64,12 @@ export default function Sidebar({
             )}
           </div>
         </>
+      )}
+
+      {currentView === 'agents' && (
+        <div className="prompts-sidebar-info">
+          <p>Configure your personal board of directors - specialized AI agents that provide perspective-aware guidance.</p>
+        </div>
       )}
 
       {currentView === 'prompts' && (

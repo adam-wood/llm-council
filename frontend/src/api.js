@@ -192,4 +192,121 @@ export const api = {
     }
     return response.json();
   },
+
+  /**
+   * Get all agents.
+   * @param {boolean} activeOnly - If true, only return active agents
+   */
+  async getAgents(activeOnly = false) {
+    const url = activeOnly
+      ? `${API_BASE}/api/agents?active_only=true`
+      : `${API_BASE}/api/agents`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to get agents');
+    }
+    return response.json();
+  },
+
+  /**
+   * Get a specific agent.
+   * @param {string} agentId - The agent ID
+   */
+  async getAgent(agentId) {
+    const response = await fetch(`${API_BASE}/api/agents/${agentId}`);
+    if (!response.ok) {
+      throw new Error('Failed to get agent');
+    }
+    return response.json();
+  },
+
+  /**
+   * Create a new agent.
+   * @param {object} agentData - The agent configuration
+   */
+  async createAgent(agentData) {
+    const response = await fetch(`${API_BASE}/api/agents`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(agentData),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to create agent');
+    }
+    return response.json();
+  },
+
+  /**
+   * Update an agent.
+   * @param {string} agentId - The agent ID
+   * @param {object} updates - The fields to update
+   */
+  async updateAgent(agentId, updates) {
+    const response = await fetch(`${API_BASE}/api/agents/${agentId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updates),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update agent');
+    }
+    return response.json();
+  },
+
+  /**
+   * Delete an agent.
+   * @param {string} agentId - The agent ID
+   */
+  async deleteAgent(agentId) {
+    const response = await fetch(`${API_BASE}/api/agents/${agentId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to delete agent');
+    }
+    return response.json();
+  },
+
+  /**
+   * Initialize default agent templates.
+   */
+  async initializeDefaultAgents() {
+    const response = await fetch(`${API_BASE}/api/agents/initialize`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to initialize default agents');
+    }
+    return response.json();
+  },
+
+  /**
+   * Get the current chairman agent.
+   */
+  async getChairman() {
+    const response = await fetch(`${API_BASE}/api/agents/chairman`);
+    if (!response.ok) {
+      throw new Error('Failed to get chairman');
+    }
+    return response.json();
+  },
+
+  /**
+   * Set which agent is the chairman.
+   * @param {string} agentId - The agent ID (or null for default)
+   */
+  async setChairman(agentId) {
+    const id = agentId || 'default';
+    const response = await fetch(`${API_BASE}/api/agents/chairman/${id}`, {
+      method: 'PUT',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to set chairman');
+    }
+    return response.json();
+  },
 };

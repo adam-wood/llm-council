@@ -6,10 +6,10 @@ function deAnonymizeText(text, labelToModel) {
   if (!labelToModel) return text;
 
   let result = text;
-  // Replace each "Response X" with the actual model name
-  Object.entries(labelToModel).forEach(([label, model]) => {
-    const modelShortName = model.split('/')[1] || model;
-    result = result.replace(new RegExp(label, 'g'), `**${modelShortName}**`);
+  // Replace each "Response X" with the agent title or model name
+  Object.entries(labelToModel).forEach(([label, info]) => {
+    const displayName = info.agent_title || info.model?.split('/')[1] || info.model || label;
+    result = result.replace(new RegExp(label, 'g'), `**${displayName}**`);
   });
   return result;
 }
@@ -38,14 +38,19 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
             className={`tab ${activeTab === index ? 'active' : ''}`}
             onClick={() => setActiveTab(index)}
           >
-            {rank.model.split('/')[1] || rank.model}
+            {rank.agent_title || rank.model.split('/')[1] || rank.model}
           </button>
         ))}
       </div>
 
       <div className="tab-content">
-        <div className="ranking-model">
-          {rankings[activeTab].model}
+        <div className="agent-info">
+          <div className="agent-name">
+            {rankings[activeTab].agent_title || 'Agent'}
+          </div>
+          <div className="ranking-model">
+            {rankings[activeTab].model}
+          </div>
         </div>
         <div className="ranking-content markdown-content">
           <ReactMarkdown>
@@ -58,13 +63,11 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
           <div className="parsed-ranking">
             <strong>Extracted Ranking:</strong>
             <ol>
-              {rankings[activeTab].parsed_ranking.map((label, i) => (
-                <li key={i}>
-                  {labelToModel && labelToModel[label]
-                    ? labelToModel[label].split('/')[1] || labelToModel[label]
-                    : label}
-                </li>
-              ))}
+              {rankings[activeTab].parsed_ranking.map((label, i) => {
+                const info = labelToModel && labelToModel[label];
+                const displayName = info?.agent_title || info?.model?.split('/')[1] || info?.model || label;
+                return <li key={i}>{displayName}</li>;
+              })}
             </ol>
           </div>
         )}
@@ -81,7 +84,7 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
               <div key={index} className="aggregate-item">
                 <span className="rank-position">#{index + 1}</span>
                 <span className="rank-model">
-                  {agg.model.split('/')[1] || agg.model}
+                  {agg.agent_title || agg.model.split('/')[1] || agg.model}
                 </span>
                 <span className="rank-score">
                   Avg: {agg.average_rank.toFixed(2)}

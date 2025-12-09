@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import PromptManager from './components/PromptManager';
+import AgentManager from './components/AgentManager';
 import { api } from './api';
 import './App.css';
 
@@ -193,15 +194,15 @@ function App() {
         currentView={currentView}
         onViewChange={setCurrentView}
       />
-      {currentView === 'chat' ? (
+      {currentView === 'chat' && (
         <ChatInterface
           conversation={currentConversation}
           onSendMessage={handleSendMessage}
           isLoading={isLoading}
         />
-      ) : (
-        <PromptManager />
       )}
+      {currentView === 'agents' && <AgentManager />}
+      {currentView === 'prompts' && <PromptManager />}
     </div>
   );
 }

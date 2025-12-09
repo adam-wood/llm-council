@@ -111,11 +111,23 @@
   margin-bottom: 20px;
 }
 
+.stage2 .agent-info {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.stage2 .agent-name {
+  color: #2c3e50;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
 .ranking-model {
   color: #888;
   font-size: 12px;
   font-family: monospace;
-  margin-bottom: 12px;
 }
 
 .ranking-content {

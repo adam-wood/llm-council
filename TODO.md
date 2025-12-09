@@ -19,12 +19,12 @@
 
 ## Phase 2: Agent Management UI
 
-- [ ] **Agent configuration interface**
+- [x] **Agent configuration interface** ✅ (v0.4.0)
   - Add "Manage Agents" page/modal in frontend
   - CRUD operations for agents (Create, Read, Update, Delete)
-  - Drag-and-drop to reorder agent priority/seating
+  - ~~Drag-and-drop to reorder agent priority/seating~~ (deferred)
 
-- [ ] **Agent role templates**
+- [x] **Agent role templates** ✅ (v0.4.0)
   - Pre-built agent templates for common roles:
     - Ethics & Values Advisor
     - Leadership & Strategy Coach
@@ -35,10 +35,21 @@
     - Creativity & Innovation Catalyst
   - One-click installation of template agents
 
-- [ ] **Visual agent representation**
+- [x] **Visual agent representation** ✅ (v0.4.0)
   - Add avatar/icon for each agent
   - Display agent role/title in Stage 1 tabs
   - Color-coding by agent category
+
+- [ ] **Front End Improvements**
+  - Make the vertical divider between left and right hand panes movable / resizeable
+  - Make the LLM model selectable from a drop down. The dropdown options should be retrived from openrouter and grouped by vendor. The dropdown should support filter/typeahead.
+  - Enable conversations to be deleted from sidebar
+  - Enable the prompt that was used for each LLM/Agent response to be viewed in the conversation view. The prompt should be shown/hidden from a toggle. This is becuase the prompts can now change. 
+  - For the 'Aggregate Rankings (Street Cred)' section, show how the votes were calculated. This could be via a matrix where we see what each agent voted for each response. The cells could be colour coded to show clusters/patterns.
+
+- [ ] **Functional Improvements**
+  - Allow the creation of multiple 'boards' with different sets of agents. 1 or more boards can be active at any time and receive queries. However we should optimise for 1 board to be active at any time.
+    - The idea is that you could switch between a board of identical prompts between different models (useful for research) and a board of different coaches (useful for life/business guidance).
 
 ## Phase 3: Enhanced Deliberation System
 
