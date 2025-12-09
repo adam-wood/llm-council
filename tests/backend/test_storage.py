@@ -92,6 +92,28 @@ class TestConversationCRUD:
 
         assert conversations == []
 
+    def test_delete_conversation(self, temp_data_dir):
+        """Test deleting an existing conversation."""
+        # Create a conversation
+        storage.create_conversation("test-conv-1")
+        assert storage.get_conversation("test-conv-1") is not None
+
+        # Delete it
+        result = storage.delete_conversation("test-conv-1")
+
+        assert result is True
+        assert storage.get_conversation("test-conv-1") is None
+
+        # Verify file is removed
+        path = storage.get_conversation_path("test-conv-1")
+        assert not os.path.exists(path)
+
+    def test_delete_nonexistent_conversation(self, temp_data_dir):
+        """Test deleting a conversation that doesn't exist."""
+        result = storage.delete_conversation("non-existent")
+
+        assert result is False
+
 
 class TestMessageOperations:
     """Test message-related operations."""

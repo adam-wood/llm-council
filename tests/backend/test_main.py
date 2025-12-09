@@ -109,6 +109,32 @@ class TestConversationEndpoints:
 
         assert response.status_code == 404
 
+    def test_delete_conversation(self, client, temp_data_dir):
+        """Test deleting a conversation."""
+        # Create conversation
+        create_response = client.post("/api/conversations", json={})
+        conv_id = create_response.json()["id"]
+
+        # Verify it exists
+        get_response = client.get(f"/api/conversations/{conv_id}")
+        assert get_response.status_code == 200
+
+        # Delete it
+        delete_response = client.delete(f"/api/conversations/{conv_id}")
+
+        assert delete_response.status_code == 200
+        assert delete_response.json() == {"success": True}
+
+        # Verify it's gone
+        get_after_delete = client.get(f"/api/conversations/{conv_id}")
+        assert get_after_delete.status_code == 404
+
+    def test_delete_nonexistent_conversation(self, client, temp_data_dir):
+        """Test deleting a conversation that doesn't exist."""
+        response = client.delete("/api/conversations/non-existent-id")
+
+        assert response.status_code == 404
+
 
 class TestAgentEndpoints:
     """Test agent management endpoints."""
