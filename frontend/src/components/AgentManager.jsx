@@ -151,7 +151,7 @@ function AgentManager() {
         await api.createAgent(editingAgent);
         showSuccessMessage('Agent created successfully!');
       } else {
-        const { id, created_at, updated_at, ...updates } = editingAgent;
+        const { id, created_at: _created_at, updated_at: _updated_at, ...updates } = editingAgent;
         await api.updateAgent(id, updates);
         showSuccessMessage('Agent updated successfully!');
       }

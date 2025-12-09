@@ -22,6 +22,7 @@ function PromptManager() {
     if (prompts && selectedModel) {
       loadPromptForSelection();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStage, selectedModel, prompts]);
 
   const loadData = async () => {
@@ -138,11 +139,6 @@ function PromptManager() {
   const handleCancel = () => {
     loadPromptForSelection();
     setIsEditing(false);
-  };
-
-  const getModelDisplayName = (modelId) => {
-    if (modelId === 'defaults') return 'Defaults (All Models)';
-    return modelId;
   };
 
   if (loading) {
