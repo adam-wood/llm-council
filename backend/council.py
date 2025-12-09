@@ -31,7 +31,7 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
         ]
 
     # Create tasks for each agent with their specific prompts
-    async def query_with_agent_prompt(agent: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    async def query_with_agent_prompt(agent: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, Any], str]:
         model = agent["model"]
 
         # Priority: agent-specific prompt > model-specific prompt > default prompt
@@ -47,7 +47,7 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
 
         # Query the model
         response = await query_model(model, messages)
-        return agent, response
+        return agent, response, prompt
 
     # Query all agents in parallel with their individual prompts
     tasks = [query_with_agent_prompt(agent) for agent in agents]
@@ -59,13 +59,14 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
         if isinstance(result, Exception):
             # Skip failed queries
             continue
-        agent, response = result
+        agent, response, prompt = result
         if response is not None:  # Only include successful responses
             stage1_results.append({
                 "agent_id": agent["id"],
                 "agent_title": agent.get("title", agent["model"]),
                 "model": agent["model"],
-                "response": response.get('content', '')
+                "response": response.get('content', ''),
+                "prompt": prompt
             })
 
     return stage1_results
@@ -114,7 +115,7 @@ async def stage2_collect_rankings(
         ]
 
     # Create tasks for each agent with their specific prompts
-    async def query_ranking_with_agent_prompt(agent: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    async def query_ranking_with_agent_prompt(agent: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, Any], str]:
         model = agent["model"]
 
         # Priority: agent-specific prompt > model-specific prompt > default prompt
@@ -134,7 +135,7 @@ async def stage2_collect_rankings(
 
         # Query the model
         response = await query_model(model, messages)
-        return agent, response
+        return agent, response, ranking_prompt
 
     # Query all agents in parallel with their individual prompts
     import asyncio
@@ -147,7 +148,7 @@ async def stage2_collect_rankings(
         if isinstance(result, Exception):
             # Skip failed queries
             continue
-        agent, response = result
+        agent, response, prompt = result
         if response is not None:
             full_text = response.get('content', '')
             parsed = parse_ranking_from_text(full_text)
@@ -156,7 +157,8 @@ async def stage2_collect_rankings(
                 "agent_title": agent.get("title", agent["model"]),
                 "model": agent["model"],
                 "ranking": full_text,
-                "parsed_ranking": parsed
+                "parsed_ranking": parsed,
+                "prompt": prompt
             })
 
     return stage2_results, label_to_model
@@ -221,13 +223,15 @@ async def stage3_synthesize_final(
         return {
             "agent_title": chairman.get("title", "Chairman") if chairman else "Chairman",
             "model": chairman_model,
-            "response": "Error: Unable to generate final synthesis."
+            "response": "Error: Unable to generate final synthesis.",
+            "prompt": chairman_prompt
         }
 
     return {
         "agent_title": chairman.get("title", "Chairman") if chairman else "Chairman",
         "model": chairman_model,
-        "response": response.get('content', '')
+        "response": response.get('content', ''),
+        "prompt": chairman_prompt
     }
 
 

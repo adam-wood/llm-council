@@ -16,10 +16,13 @@ function deAnonymizeText(text, labelToModel) {
 
 export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
   const [activeTab, setActiveTab] = useState(0);
+  const [showPrompt, setShowPrompt] = useState(false);
 
   if (!rankings || rankings.length === 0) {
     return null;
   }
+
+  const currentRanking = rankings[activeTab];
 
   return (
     <div className="stage stage2">
@@ -46,24 +49,38 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
       <div className="tab-content">
         <div className="agent-info">
           <div className="agent-name">
-            {rankings[activeTab].agent_title || 'Agent'}
+            {currentRanking.agent_title || 'Agent'}
           </div>
           <div className="ranking-model">
-            {rankings[activeTab].model}
+            {currentRanking.model}
           </div>
+          {currentRanking.prompt && (
+            <button
+              className="toggle-prompt-btn"
+              onClick={() => setShowPrompt(!showPrompt)}
+            >
+              {showPrompt ? '🔼 Hide Prompt' : '🔽 Show Prompt'}
+            </button>
+          )}
         </div>
+        {showPrompt && currentRanking.prompt && (
+          <div className="prompt-display">
+            <h4>Prompt Used:</h4>
+            <pre className="prompt-text">{currentRanking.prompt}</pre>
+          </div>
+        )}
         <div className="ranking-content markdown-content">
           <ReactMarkdown>
-            {deAnonymizeText(rankings[activeTab].ranking, labelToModel)}
+            {deAnonymizeText(currentRanking.ranking, labelToModel)}
           </ReactMarkdown>
         </div>
 
-        {rankings[activeTab].parsed_ranking &&
-         rankings[activeTab].parsed_ranking.length > 0 && (
+        {currentRanking.parsed_ranking &&
+         currentRanking.parsed_ranking.length > 0 && (
           <div className="parsed-ranking">
             <strong>Extracted Ranking:</strong>
             <ol>
-              {rankings[activeTab].parsed_ranking.map((label, i) => {
+              {currentRanking.parsed_ranking.map((label, i) => {
                 const info = labelToModel && labelToModel[label];
                 const displayName = info?.agent_title || info?.model?.split('/')[1] || info?.model || label;
                 return <li key={i}>{displayName}</li>;
