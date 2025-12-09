@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import PromptManager from './components/PromptManager';
@@ -60,6 +61,23 @@ function App() {
 
   const handleSelectConversation = (id) => {
     setCurrentConversationId(id);
+  };
+
+  const handleDeleteConversation = async (id) => {
+    try {
+      await api.deleteConversation(id);
+
+      // Reload conversations list
+      await loadConversations();
+
+      // If the deleted conversation was the current one, clear it
+      if (currentConversationId === id) {
+        setCurrentConversationId(null);
+        setCurrentConversation(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+    }
   };
 
   const handleSendMessage = async (content) => {
@@ -188,23 +206,31 @@ function App() {
 
   return (
     <div className="app">
-      <Sidebar
-        conversations={conversations}
-        currentConversationId={currentConversationId}
-        onSelectConversation={handleSelectConversation}
-        onNewConversation={handleNewConversation}
-        currentView={currentView}
-        onViewChange={setCurrentView}
-      />
-      {currentView === 'chat' && (
-        <ChatInterface
-          conversation={currentConversation}
-          onSendMessage={handleSendMessage}
-          isLoading={isLoading}
-        />
-      )}
-      {currentView === 'agents' && <AgentManager />}
-      {currentView === 'prompts' && <PromptManager />}
+      <PanelGroup direction="horizontal">
+        <Panel defaultSize={20} minSize={15} maxSize={40}>
+          <Sidebar
+            conversations={conversations}
+            currentConversationId={currentConversationId}
+            onSelectConversation={handleSelectConversation}
+            onNewConversation={handleNewConversation}
+            onDeleteConversation={handleDeleteConversation}
+            currentView={currentView}
+            onViewChange={setCurrentView}
+          />
+        </Panel>
+        <PanelResizeHandle className="resize-handle" />
+        <Panel defaultSize={80} minSize={60}>
+          {currentView === 'chat' && (
+            <ChatInterface
+              conversation={currentConversation}
+              onSendMessage={handleSendMessage}
+              isLoading={isLoading}
+            />
+          )}
+          {currentView === 'agents' && <AgentManager />}
+          {currentView === 'prompts' && <PromptManager />}
+        </Panel>
+      </PanelGroup>
     </div>
   );
 }
