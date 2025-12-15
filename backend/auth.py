@@ -1,12 +1,14 @@
 """Clerk JWT verification for FastAPI."""
 
 import os
+import logging
 import jwt
 import httpx
 from functools import lru_cache
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
+logger = logging.getLogger(__name__)
 security = HTTPBearer()
 
 
@@ -24,11 +26,16 @@ def get_clerk_jwks() -> dict:
         # Fallback to global Clerk JWKS
         jwks_url = "https://api.clerk.com/v1/jwks"
 
+    logger.info(f"Fetching JWKS from: {jwks_url}")
+
     try:
         response = httpx.get(jwks_url, timeout=10)
         response.raise_for_status()
-        return response.json()
+        jwks = response.json()
+        logger.info(f"Successfully fetched JWKS with {len(jwks.get('keys', []))} keys")
+        return jwks
     except Exception as e:
+        logger.error(f"Failed to fetch JWKS from {jwks_url}: {e}")
         raise ValueError(f"Failed to fetch JWKS from {jwks_url}: {e}")
 
 
@@ -44,6 +51,7 @@ def verify_clerk_token(
     - other standard JWT claims
     """
     token = credentials.credentials
+    logger.info(f"Verifying token (first 50 chars): {token[:50]}...")
 
     try:
         # Get JWKS for verification
@@ -52,8 +60,10 @@ def verify_clerk_token(
         # Decode token header to get key ID (kid)
         unverified_header = jwt.get_unverified_header(token)
         kid = unverified_header.get("kid")
+        logger.info(f"Token kid: {kid}")
 
         if not kid:
+            logger.error("Token missing key ID")
             raise HTTPException(
                 status_code=401,
                 detail="Token missing key ID"
@@ -61,6 +71,9 @@ def verify_clerk_token(
 
         # Find matching key in JWKS
         key = None
+        available_kids = [jwk.get("kid") for jwk in jwks.get("keys", [])]
+        logger.info(f"Available JWKS kids: {available_kids}")
+
         for jwk in jwks.get("keys", []):
             if jwk.get("kid") == kid:
                 key = jwt.algorithms.RSAAlgorithm.from_jwk(jwk)
@@ -68,6 +81,7 @@ def verify_clerk_token(
 
         if not key:
             # Clear cache and retry once (key rotation scenario)
+            logger.info("Key not found, clearing cache and retrying...")
             get_clerk_jwks.cache_clear()
             jwks = get_clerk_jwks()
             for jwk in jwks.get("keys", []):
@@ -76,6 +90,7 @@ def verify_clerk_token(
                     break
 
         if not key:
+            logger.error(f"Token key {kid} not found in JWKS")
             raise HTTPException(
                 status_code=401,
                 detail="Token key not found in JWKS"
@@ -92,11 +107,14 @@ def verify_clerk_token(
             }
         )
 
+        logger.info(f"Token verified successfully for user: {payload.get('sub')}")
         return payload
 
     except jwt.ExpiredSignatureError:
+        logger.error("Token expired")
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError as e:
+        logger.error(f"Invalid token: {str(e)}")
         raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
     except HTTPException:
         raise
