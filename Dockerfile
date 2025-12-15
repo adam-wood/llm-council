@@ -2,17 +2,13 @@
 FROM node:20-alpine AS frontend-build
 WORKDIR /app/frontend
 
-# Build-time env vars for Vite (passed as Docker build args)
-ARG VITE_CLERK_PUBLISHABLE_KEY
+# Clerk publishable key (safe to commit - it's meant to be public)
+ENV VITE_CLERK_PUBLISHABLE_KEY=pk_test_ZG9taW5hbnQtcG9sbGl3b2ctNzMuY2xlcmsuYWNjb3VudHMuZGV2JA
 
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
-
-# Create .env file from build arg before building
-RUN echo "VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY" > .env.local && \
-    echo "Building with VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:0:20}..." && \
-    npm run build
+RUN npm run build
 
 # Production image
 FROM python:3.11-slim
