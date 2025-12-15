@@ -7,12 +7,13 @@ from .prompt_storage import get_prompt_for_model
 from . import agent_storage
 
 
-async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
+async def stage1_collect_responses(user_id: str, user_query: str) -> List[Dict[str, Any]]:
     """
     Stage 1: Collect individual responses from all council agents.
     Each agent uses their custom prompt, or falls back to model/default prompts.
 
     Args:
+        user_id: The user's identifier
         user_query: The user's question
 
     Returns:
@@ -20,8 +21,8 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
     """
     import asyncio
 
-    # Load active agents, or fall back to config models
-    agents = agent_storage.get_active_agents()
+    # Load active agents for this user, or fall back to config models
+    agents = agent_storage.get_active_agents(user_id)
 
     # If no agents configured, use legacy model list
     if not agents:
@@ -38,7 +39,7 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
         if "stage1" in agent.get("prompts", {}):
             stage1_template = agent["prompts"]["stage1"]
         else:
-            stage1_prompt = get_prompt_for_model(model, 'stage1')
+            stage1_prompt = get_prompt_for_model(user_id, model, 'stage1')
             stage1_template = stage1_prompt['template']
 
         # Format the prompt
@@ -73,6 +74,7 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
 
 
 async def stage2_collect_rankings(
+    user_id: str,
     user_query: str,
     stage1_results: List[Dict[str, Any]]
 ) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
@@ -80,6 +82,7 @@ async def stage2_collect_rankings(
     Stage 2: Each model ranks the anonymized responses.
 
     Args:
+        user_id: The user's identifier
         user_query: The original user query
         stage1_results: Results from Stage 1
 
@@ -105,7 +108,7 @@ async def stage2_collect_rankings(
     ])
 
     # Load active agents for ranking
-    agents = agent_storage.get_active_agents()
+    agents = agent_storage.get_active_agents(user_id)
 
     # If no agents configured, use legacy model list
     if not agents:
@@ -122,7 +125,7 @@ async def stage2_collect_rankings(
         if "stage2" in agent.get("prompts", {}):
             stage2_template = agent["prompts"]["stage2"]
         else:
-            stage2_prompt = get_prompt_for_model(model, 'stage2')
+            stage2_prompt = get_prompt_for_model(user_id, model, 'stage2')
             stage2_template = stage2_prompt['template']
 
         # Format the prompt template
@@ -165,6 +168,7 @@ async def stage2_collect_rankings(
 
 
 async def stage3_synthesize_final(
+    user_id: str,
     user_query: str,
     stage1_results: List[Dict[str, Any]],
     stage2_results: List[Dict[str, Any]]
@@ -173,6 +177,7 @@ async def stage3_synthesize_final(
     Stage 3: Chairman synthesizes final response.
 
     Args:
+        user_id: The user's identifier
         user_query: The original user query
         stage1_results: Individual model responses from Stage 1
         stage2_results: Rankings from Stage 2
@@ -181,18 +186,18 @@ async def stage3_synthesize_final(
         Dict with 'model' and 'response' keys
     """
     # Get chairman agent or use default
-    chairman = agent_storage.get_chairman()
+    chairman = agent_storage.get_chairman(user_id)
     if chairman:
         chairman_model = chairman["model"]
         # Priority: agent-specific prompt > model-specific prompt > default prompt
         if "stage3" in chairman.get("prompts", {}):
             stage3_template = chairman["prompts"]["stage3"]
         else:
-            stage3_prompt = get_prompt_for_model(chairman_model, 'stage3')
+            stage3_prompt = get_prompt_for_model(user_id, chairman_model, 'stage3')
             stage3_template = stage3_prompt['template']
     else:
         chairman_model = CHAIRMAN_MODEL
-        stage3_prompt = get_prompt_for_model(chairman_model, 'stage3')
+        stage3_prompt = get_prompt_for_model(user_id, chairman_model, 'stage3')
         stage3_template = stage3_prompt['template']
 
     # Build comprehensive context for chairman
@@ -362,18 +367,19 @@ Title:"""
     return title
 
 
-async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
+async def run_full_council(user_id: str, user_query: str) -> Tuple[List, List, Dict, Dict]:
     """
     Run the complete 3-stage council process.
 
     Args:
+        user_id: The user's identifier
         user_query: The user's question
 
     Returns:
         Tuple of (stage1_results, stage2_results, stage3_result, metadata)
     """
     # Stage 1: Collect individual responses
-    stage1_results = await stage1_collect_responses(user_query)
+    stage1_results = await stage1_collect_responses(user_id, user_query)
 
     # If no models responded successfully, return error
     if not stage1_results:
@@ -383,13 +389,14 @@ async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
         }, {}
 
     # Stage 2: Collect rankings
-    stage2_results, label_to_model = await stage2_collect_rankings(user_query, stage1_results)
+    stage2_results, label_to_model = await stage2_collect_rankings(user_id, user_query, stage1_results)
 
     # Calculate aggregate rankings
     aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
 
     # Stage 3: Synthesize final answer
     stage3_result = await stage3_synthesize_final(
+        user_id,
         user_query,
         stage1_results,
         stage2_results

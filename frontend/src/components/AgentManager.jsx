@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { api } from '../api';
 import './AgentManager.css';
 
 // Agent role templates with pre-defined configurations
@@ -76,7 +75,7 @@ const AGENT_TEMPLATES = [
   }
 ];
 
-function AgentManager() {
+function AgentManager({ api }) {
   const [agents, setAgents] = useState([]);
   const [chairman, setChairman] = useState(null);
   const [loading, setLoading] = useState(true);

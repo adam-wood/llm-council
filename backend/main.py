@@ -1,8 +1,11 @@
 """FastAPI backend for LLM Council."""
 
-from fastapi import FastAPI, HTTPException
+import os
+from pathlib import Path
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Dict, Any
 import uuid
@@ -12,15 +15,30 @@ import asyncio
 from . import storage
 from . import prompt_storage
 from . import agent_storage
-from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
+from .auth import get_current_user_id
+from .council import (
+    run_full_council, generate_conversation_title,
+    stage1_collect_responses, stage2_collect_rankings,
+    stage3_synthesize_final, calculate_aggregate_rankings
+)
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 
 app = FastAPI(title="LLM Council API")
 
-# Enable CORS for local development
+# CORS configuration - allow localhost for dev and production domain
+CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
+# Add production domain if set
+PRODUCTION_URL = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+if PRODUCTION_URL:
+    CORS_ORIGINS.append(f"https://{PRODUCTION_URL}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -79,52 +97,67 @@ class Conversation(BaseModel):
     messages: List[Dict[str, Any]]
 
 
-@app.get("/")
-async def root():
-    """Health check endpoint."""
+# Health check endpoint (no auth required)
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Railway."""
     return {"status": "ok", "service": "LLM Council API"}
 
 
+# Conversation endpoints - all require auth
 @app.get("/api/conversations", response_model=List[ConversationMetadata])
-async def list_conversations():
-    """List all conversations (metadata only)."""
-    return storage.list_conversations()
+async def list_conversations(user_id: str = Depends(get_current_user_id)):
+    """List all conversations for the current user (metadata only)."""
+    return storage.list_conversations(user_id)
 
 
 @app.post("/api/conversations", response_model=Conversation)
-async def create_conversation(request: CreateConversationRequest):
-    """Create a new conversation."""
+async def create_conversation(
+    request: CreateConversationRequest,
+    user_id: str = Depends(get_current_user_id)
+):
+    """Create a new conversation for the current user."""
     conversation_id = str(uuid.uuid4())
-    conversation = storage.create_conversation(conversation_id)
+    conversation = storage.create_conversation(user_id, conversation_id)
     return conversation
 
 
 @app.get("/api/conversations/{conversation_id}", response_model=Conversation)
-async def get_conversation(conversation_id: str):
+async def get_conversation(
+    conversation_id: str,
+    user_id: str = Depends(get_current_user_id)
+):
     """Get a specific conversation with all its messages."""
-    conversation = storage.get_conversation(conversation_id)
+    conversation = storage.get_conversation(user_id, conversation_id)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return conversation
 
 
 @app.delete("/api/conversations/{conversation_id}")
-async def delete_conversation(conversation_id: str):
+async def delete_conversation(
+    conversation_id: str,
+    user_id: str = Depends(get_current_user_id)
+):
     """Delete a conversation."""
-    success = storage.delete_conversation(conversation_id)
+    success = storage.delete_conversation(user_id, conversation_id)
     if not success:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return {"success": True}
 
 
 @app.post("/api/conversations/{conversation_id}/message")
-async def send_message(conversation_id: str, request: SendMessageRequest):
+async def send_message(
+    conversation_id: str,
+    request: SendMessageRequest,
+    user_id: str = Depends(get_current_user_id)
+):
     """
     Send a message and run the 3-stage council process.
     Returns the complete response with all stages.
     """
     # Check if conversation exists
-    conversation = storage.get_conversation(conversation_id)
+    conversation = storage.get_conversation(user_id, conversation_id)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
@@ -132,20 +165,21 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
     is_first_message = len(conversation["messages"]) == 0
 
     # Add user message
-    storage.add_user_message(conversation_id, request.content)
+    storage.add_user_message(user_id, conversation_id, request.content)
 
     # If this is the first message, generate a title
     if is_first_message:
         title = await generate_conversation_title(request.content)
-        storage.update_conversation_title(conversation_id, title)
+        storage.update_conversation_title(user_id, conversation_id, title)
 
     # Run the 3-stage council process
     stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
-        request.content
+        user_id, request.content
     )
 
     # Add assistant message with all stages
     storage.add_assistant_message(
+        user_id,
         conversation_id,
         stage1_results,
         stage2_results,
@@ -162,13 +196,17 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
 
 
 @app.post("/api/conversations/{conversation_id}/message/stream")
-async def send_message_stream(conversation_id: str, request: SendMessageRequest):
+async def send_message_stream(
+    conversation_id: str,
+    request: SendMessageRequest,
+    user_id: str = Depends(get_current_user_id)
+):
     """
     Send a message and stream the 3-stage council process.
     Returns Server-Sent Events as each stage completes.
     """
     # Check if conversation exists
-    conversation = storage.get_conversation(conversation_id)
+    conversation = storage.get_conversation(user_id, conversation_id)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
@@ -178,7 +216,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
     async def event_generator():
         try:
             # Add user message
-            storage.add_user_message(conversation_id, request.content)
+            storage.add_user_message(user_id, conversation_id, request.content)
 
             # Start title generation in parallel (don't await yet)
             title_task = None
@@ -187,28 +225,29 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
 
             # Stage 1: Collect responses
             yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
-            stage1_results = await stage1_collect_responses(request.content)
+            stage1_results = await stage1_collect_responses(user_id, request.content)
             yield f"data: {json.dumps({'type': 'stage1_complete', 'data': stage1_results})}\n\n"
 
             # Stage 2: Collect rankings
             yield f"data: {json.dumps({'type': 'stage2_start'})}\n\n"
-            stage2_results, label_to_model = await stage2_collect_rankings(request.content, stage1_results)
+            stage2_results, label_to_model = await stage2_collect_rankings(user_id, request.content, stage1_results)
             aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
             yield f"data: {json.dumps({'type': 'stage2_complete', 'data': stage2_results, 'metadata': {'label_to_model': label_to_model, 'aggregate_rankings': aggregate_rankings}})}\n\n"
 
             # Stage 3: Synthesize final answer
             yield f"data: {json.dumps({'type': 'stage3_start'})}\n\n"
-            stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results)
+            stage3_result = await stage3_synthesize_final(user_id, request.content, stage1_results, stage2_results)
             yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result})}\n\n"
 
             # Wait for title generation if it was started
             if title_task:
                 title = await title_task
-                storage.update_conversation_title(conversation_id, title)
+                storage.update_conversation_title(user_id, conversation_id, title)
                 yield f"data: {json.dumps({'type': 'title_complete', 'data': {'title': title}})}\n\n"
 
             # Save complete assistant message
             storage.add_assistant_message(
+                user_id,
                 conversation_id,
                 stage1_results,
                 stage2_results,
@@ -232,23 +271,31 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
     )
 
 
+# Agent endpoints - all require auth
 @app.get("/api/agents")
-async def list_agents(active_only: bool = False):
+async def list_agents(
+    active_only: bool = False,
+    user_id: str = Depends(get_current_user_id)
+):
     """
-    Get all agent configurations.
+    Get all agent configurations for the current user.
 
     Args:
         active_only: If True, only return active agents
     """
     if active_only:
-        return agent_storage.get_active_agents()
-    return agent_storage.get_all_agents()
+        return agent_storage.get_active_agents(user_id)
+    return agent_storage.get_all_agents(user_id)
 
 
 @app.post("/api/agents")
-async def create_agent(request: CreateAgentRequest):
-    """Create a new agent configuration."""
+async def create_agent(
+    request: CreateAgentRequest,
+    user_id: str = Depends(get_current_user_id)
+):
+    """Create a new agent configuration for the current user."""
     agent = agent_storage.create_agent(
+        user_id,
         title=request.title,
         role=request.role,
         model=request.model,
@@ -259,39 +306,49 @@ async def create_agent(request: CreateAgentRequest):
 
 
 @app.post("/api/agents/initialize")
-async def initialize_default_agents():
-    """Initialize default agent templates."""
-    agents = agent_storage.initialize_default_agents()
+async def initialize_default_agents(user_id: str = Depends(get_current_user_id)):
+    """Initialize default agent templates for the current user."""
+    agents = agent_storage.initialize_default_agents(user_id)
     return {"agents": agents, "count": len(agents)}
 
 
 @app.get("/api/agents/chairman")
-async def get_chairman_agent():
-    """Get the current chairman agent configuration."""
-    chairman = agent_storage.get_chairman()
+async def get_chairman_agent(user_id: str = Depends(get_current_user_id)):
+    """Get the current chairman agent configuration for the user."""
+    chairman = agent_storage.get_chairman(user_id)
     return {"chairman": chairman}
 
 
 @app.put("/api/agents/chairman/{agent_id}")
-async def set_chairman_agent(agent_id: str):
-    """Set which agent is the chairman."""
-    success = agent_storage.set_chairman(agent_id if agent_id != "default" else None)
+async def set_chairman_agent(
+    agent_id: str,
+    user_id: str = Depends(get_current_user_id)
+):
+    """Set which agent is the chairman for the user."""
+    success = agent_storage.set_chairman(user_id, agent_id if agent_id != "default" else None)
     if not success:
         raise HTTPException(status_code=404, detail="Agent not found")
     return {"success": True, "chairman": agent_id}
 
 
 @app.get("/api/agents/{agent_id}")
-async def get_agent(agent_id: str):
+async def get_agent(
+    agent_id: str,
+    user_id: str = Depends(get_current_user_id)
+):
     """Get a specific agent configuration."""
-    agent = agent_storage.get_agent_by_id(agent_id)
+    agent = agent_storage.get_agent_by_id(user_id, agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
     return agent
 
 
 @app.put("/api/agents/{agent_id}")
-async def update_agent(agent_id: str, request: UpdateAgentRequest):
+async def update_agent(
+    agent_id: str,
+    request: UpdateAgentRequest,
+    user_id: str = Depends(get_current_user_id)
+):
     """Update an agent configuration."""
     # Build updates dict from non-None fields
     updates = {}
@@ -306,23 +363,27 @@ async def update_agent(agent_id: str, request: UpdateAgentRequest):
     if request.active is not None:
         updates["active"] = request.active
 
-    agent = agent_storage.update_agent(agent_id, updates)
+    agent = agent_storage.update_agent(user_id, agent_id, updates)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
     return agent
 
 
 @app.delete("/api/agents/{agent_id}")
-async def delete_agent(agent_id: str):
+async def delete_agent(
+    agent_id: str,
+    user_id: str = Depends(get_current_user_id)
+):
     """Delete an agent configuration."""
-    success = agent_storage.delete_agent(agent_id)
+    success = agent_storage.delete_agent(user_id, agent_id)
     if not success:
         raise HTTPException(status_code=404, detail="Agent not found")
     return {"success": True}
 
 
+# Model and prompt endpoints - all require auth
 @app.get("/api/models")
-async def get_models():
+async def get_models(user_id: str = Depends(get_current_user_id)):
     """Get the list of council models and chairman."""
     return {
         "council": COUNCIL_MODELS,
@@ -332,9 +393,12 @@ async def get_models():
 
 
 @app.get("/api/prompts")
-async def get_prompts(model: str = None):
+async def get_prompts(
+    model: str = None,
+    user_id: str = Depends(get_current_user_id)
+):
     """
-    Get all active prompts (custom or default).
+    Get all active prompts for the current user (custom or default).
 
     Args:
         model: Optional model identifier to get model-specific prompts
@@ -342,19 +406,24 @@ async def get_prompts(model: str = None):
     if model:
         # Return prompts for specific model (with fallback to defaults)
         return {
-            "stage1": prompt_storage.get_prompt_for_model(model, "stage1"),
-            "stage2": prompt_storage.get_prompt_for_model(model, "stage2"),
-            "stage3": prompt_storage.get_prompt_for_model(model, "stage3"),
+            "stage1": prompt_storage.get_prompt_for_model(user_id, model, "stage1"),
+            "stage2": prompt_storage.get_prompt_for_model(user_id, model, "stage2"),
+            "stage3": prompt_storage.get_prompt_for_model(user_id, model, "stage3"),
         }
     else:
         # Return all prompts (defaults and per-model overrides)
-        return prompt_storage.get_all_model_prompts()
+        return prompt_storage.get_all_model_prompts(user_id)
 
 
 @app.put("/api/prompts/{stage}")
-async def update_prompt(stage: str, request: UpdatePromptRequest, model: str = None):
+async def update_prompt(
+    stage: str,
+    request: UpdatePromptRequest,
+    model: str = None,
+    user_id: str = Depends(get_current_user_id)
+):
     """
-    Update a specific stage's prompt (default or model-specific).
+    Update a specific stage's prompt for the current user (default or model-specific).
 
     Args:
         stage: The stage to update ('stage1', 'stage2', or 'stage3')
@@ -371,14 +440,18 @@ async def update_prompt(stage: str, request: UpdatePromptRequest, model: str = N
         "notes": request.notes
     }
 
-    updated_prompts = prompt_storage.update_prompt(stage, prompt_data, model)
+    updated_prompts = prompt_storage.update_prompt(user_id, stage, prompt_data, model)
     return updated_prompts
 
 
 @app.delete("/api/prompts/{stage}")
-async def reset_prompt(stage: str, model: str = None):
+async def reset_prompt(
+    stage: str,
+    model: str = None,
+    user_id: str = Depends(get_current_user_id)
+):
     """
-    Reset a specific stage's prompt to default.
+    Reset a specific stage's prompt to default for the current user.
 
     Args:
         stage: The stage to reset ('stage1', 'stage2', or 'stage3')
@@ -387,17 +460,37 @@ async def reset_prompt(stage: str, model: str = None):
     if stage not in ['stage1', 'stage2', 'stage3']:
         raise HTTPException(status_code=400, detail="Invalid stage. Must be 'stage1', 'stage2', or 'stage3'")
 
-    updated_prompts = prompt_storage.reset_prompt(stage, model)
+    updated_prompts = prompt_storage.reset_prompt(user_id, stage, model)
     return updated_prompts
 
 
 @app.delete("/api/prompts")
-async def reset_all_prompts():
-    """Reset all prompts to defaults."""
-    default_prompts = prompt_storage.reset_all_prompts()
+async def reset_all_prompts(user_id: str = Depends(get_current_user_id)):
+    """Reset all prompts to defaults for the current user."""
+    default_prompts = prompt_storage.reset_all_prompts(user_id)
     return default_prompts
+
+
+# Static file serving for production (must be after all API routes)
+FRONTEND_DIR = Path(__file__).parent.parent / "frontend" / "dist"
+
+if FRONTEND_DIR.exists():
+    # Serve static assets
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="assets")
+
+    # Serve index.html for all non-API routes (SPA routing)
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """Serve the SPA for any non-API route."""
+        # Check if it's a static file
+        file_path = FRONTEND_DIR / full_path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        # Otherwise serve index.html for SPA routing
+        return FileResponse(FRONTEND_DIR / "index.html")
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    port = int(os.getenv("PORT", "8001"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

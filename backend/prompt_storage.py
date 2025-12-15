@@ -1,32 +1,35 @@
-"""Storage for custom prompts."""
+"""Storage for custom prompts with user scoping."""
 
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional
 from .prompts import get_default_prompts
-
-PROMPTS_FILE = Path(__file__).parent.parent / "data" / "prompts.json"
-
-
-def ensure_data_directory():
-    """Ensure the data directory exists."""
-    PROMPTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+from .config import get_user_prompts_file, get_user_data_dir
 
 
-def load_custom_prompts() -> Dict[str, Any]:
+def ensure_user_directory(user_id: str):
+    """Ensure the user's data directory exists."""
+    Path(get_user_data_dir(user_id)).mkdir(parents=True, exist_ok=True)
+
+
+def load_custom_prompts(user_id: str) -> Dict[str, Any]:
     """
-    Load custom prompts from storage.
+    Load custom prompts from storage for a user.
+
+    Args:
+        user_id: The user's identifier
 
     Returns:
         Dict with 'defaults' and 'models' keys, or empty structure if none exist
     """
-    ensure_data_directory()
+    ensure_user_directory(user_id)
+    prompts_file = Path(get_user_prompts_file(user_id))
 
-    if not PROMPTS_FILE.exists():
+    if not prompts_file.exists():
         return {"defaults": {}, "models": {}}
 
     try:
-        with open(PROMPTS_FILE, 'r') as f:
+        with open(prompts_file, 'r') as f:
             data = json.load(f)
 
             # Handle legacy format (migrate to new structure)
@@ -39,28 +42,33 @@ def load_custom_prompts() -> Dict[str, Any]:
         return {"defaults": {}, "models": {}}
 
 
-def save_custom_prompts(prompts: Dict[str, Any]) -> None:
+def save_custom_prompts(user_id: str, prompts: Dict[str, Any]) -> None:
     """
-    Save custom prompts to storage.
+    Save custom prompts to storage for a user.
 
     Args:
+        user_id: The user's identifier
         prompts: Dict of custom prompts to save
     """
-    ensure_data_directory()
+    ensure_user_directory(user_id)
+    prompts_file = Path(get_user_prompts_file(user_id))
 
-    with open(PROMPTS_FILE, 'w') as f:
+    with open(prompts_file, 'w') as f:
         json.dump(prompts, f, indent=2)
 
 
-def get_active_prompts() -> Dict[str, Any]:
+def get_active_prompts(user_id: str) -> Dict[str, Any]:
     """
-    Get the currently active default prompts (custom or default).
+    Get the currently active default prompts for a user (custom or default).
+
+    Args:
+        user_id: The user's identifier
 
     Returns:
         Dict with prompts for each stage
     """
     defaults = get_default_prompts()
-    custom = load_custom_prompts()
+    custom = load_custom_prompts(user_id)
 
     # Merge custom default prompts over system defaults
     active = defaults.copy()
@@ -71,20 +79,21 @@ def get_active_prompts() -> Dict[str, Any]:
     return active
 
 
-def get_prompt_for_model(model: str, stage: str) -> Dict[str, Any]:
+def get_prompt_for_model(user_id: str, model: str, stage: str) -> Dict[str, Any]:
     """
-    Get the prompt for a specific model and stage.
+    Get the prompt for a specific model and stage for a user.
     Falls back to default if no model-specific override exists.
 
     Args:
+        user_id: The user's identifier
         model: The model identifier (e.g., "openai/gpt-5.1")
         stage: The stage ('stage1', 'stage2', or 'stage3')
 
     Returns:
         Prompt configuration dict
     """
-    custom = load_custom_prompts()
-    defaults = get_active_prompts()
+    custom = load_custom_prompts(user_id)
+    defaults = get_active_prompts(user_id)
 
     # Check for model-specific override
     if model in custom["models"] and stage in custom["models"][model]:
@@ -95,15 +104,18 @@ def get_prompt_for_model(model: str, stage: str) -> Dict[str, Any]:
     return defaults[stage]
 
 
-def get_all_model_prompts() -> Dict[str, Any]:
+def get_all_model_prompts(user_id: str) -> Dict[str, Any]:
     """
-    Get all prompts including defaults and per-model overrides.
+    Get all prompts for a user including defaults and per-model overrides.
+
+    Args:
+        user_id: The user's identifier
 
     Returns:
         Dict with 'defaults' and 'models' keys
     """
-    custom = load_custom_prompts()
-    defaults = get_active_prompts()
+    custom = load_custom_prompts(user_id)
+    defaults = get_active_prompts(user_id)
 
     return {
         "defaults": defaults,
@@ -111,11 +123,12 @@ def get_all_model_prompts() -> Dict[str, Any]:
     }
 
 
-def update_prompt(stage: str, prompt_data: Dict[str, Any], model: Optional[str] = None) -> Dict[str, Any]:
+def update_prompt(user_id: str, stage: str, prompt_data: Dict[str, Any], model: Optional[str] = None) -> Dict[str, Any]:
     """
-    Update a specific stage's prompt (default or model-specific).
+    Update a specific stage's prompt for a user (default or model-specific).
 
     Args:
+        user_id: The user's identifier
         stage: The stage to update ('stage1', 'stage2', or 'stage3')
         prompt_data: New prompt configuration
         model: Optional model identifier for model-specific prompt
@@ -123,7 +136,7 @@ def update_prompt(stage: str, prompt_data: Dict[str, Any], model: Optional[str] 
     Returns:
         Updated prompts configuration
     """
-    custom = load_custom_prompts()
+    custom = load_custom_prompts(user_id)
 
     if model:
         # Update model-specific prompt
@@ -134,22 +147,23 @@ def update_prompt(stage: str, prompt_data: Dict[str, Any], model: Optional[str] 
         # Update default prompt
         custom["defaults"][stage] = prompt_data
 
-    save_custom_prompts(custom)
-    return get_all_model_prompts()
+    save_custom_prompts(user_id, custom)
+    return get_all_model_prompts(user_id)
 
 
-def reset_prompt(stage: str, model: Optional[str] = None) -> Dict[str, Any]:
+def reset_prompt(user_id: str, stage: str, model: Optional[str] = None) -> Dict[str, Any]:
     """
-    Reset a specific stage's prompt to default.
+    Reset a specific stage's prompt to default for a user.
 
     Args:
+        user_id: The user's identifier
         stage: The stage to reset
         model: Optional model identifier for model-specific prompt
 
     Returns:
         Updated prompts configuration
     """
-    custom = load_custom_prompts()
+    custom = load_custom_prompts(user_id)
 
     if model:
         # Reset model-specific prompt
@@ -163,17 +177,21 @@ def reset_prompt(stage: str, model: Optional[str] = None) -> Dict[str, Any]:
         if stage in custom["defaults"]:
             del custom["defaults"][stage]
 
-    save_custom_prompts(custom)
-    return get_all_model_prompts()
+    save_custom_prompts(user_id, custom)
+    return get_all_model_prompts(user_id)
 
 
-def reset_all_prompts() -> Dict[str, Any]:
+def reset_all_prompts(user_id: str) -> Dict[str, Any]:
     """
-    Reset all prompts to defaults.
+    Reset all prompts to defaults for a user.
+
+    Args:
+        user_id: The user's identifier
 
     Returns:
         Default prompts configuration
     """
-    if PROMPTS_FILE.exists():
-        PROMPTS_FILE.unlink()
-    return get_all_model_prompts()
+    prompts_file = Path(get_user_prompts_file(user_id))
+    if prompts_file.exists():
+        prompts_file.unlink()
+    return get_all_model_prompts(user_id)

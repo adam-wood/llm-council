@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { api } from '../api';
 import './PromptManager.css';
 
-function PromptManager() {
+function PromptManager({ api }) {
   const [prompts, setPrompts] = useState(null);
   const [models, setModels] = useState(null);
   const [loading, setLoading] = useState(true);

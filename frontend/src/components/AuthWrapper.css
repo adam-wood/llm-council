@@ -1,0 +1,35 @@
+.auth-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+}
+
+.auth-branding {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.auth-branding h1 {
+  color: #4a90e2;
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.auth-branding p {
+  color: #666;
+}
+
+.user-menu {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+}

@@ -1,13 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { AuthWrapper, UserMenu } from './components/AuthWrapper';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import PromptManager from './components/PromptManager';
 import AgentManager from './components/AgentManager';
-import { api } from './api';
+import { createAuthenticatedApi } from './api';
 import './App.css';
 
-function App() {
+function AppContent() {
+  const { getToken } = useAuth();
+
+  // Memoize the API client to avoid recreating on every render
+  const api = useMemo(() => createAuthenticatedApi(getToken), [getToken]);
+
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
@@ -34,17 +41,15 @@ function App() {
 
   // Load conversations on mount
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadConversations();
-  }, []);
+  }, [api]);
 
   // Load conversation details when selected
   useEffect(() => {
     if (currentConversationId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadConversation(currentConversationId);
     }
-  }, [currentConversationId]);
+  }, [currentConversationId, api]);
 
   const handleNewConversation = async () => {
     try {
@@ -206,6 +211,7 @@ function App() {
 
   return (
     <div className="app">
+      <UserMenu />
       <PanelGroup direction="horizontal">
         <Panel defaultSize={20} minSize={15} maxSize={40}>
           <Sidebar
@@ -227,11 +233,19 @@ function App() {
               isLoading={isLoading}
             />
           )}
-          {currentView === 'agents' && <AgentManager />}
-          {currentView === 'prompts' && <PromptManager />}
+          {currentView === 'agents' && <AgentManager api={api} />}
+          {currentView === 'prompts' && <PromptManager api={api} />}
         </Panel>
       </PanelGroup>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthWrapper>
+      <AppContent />
+    </AuthWrapper>
   );
 }
 
