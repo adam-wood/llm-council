@@ -4,20 +4,31 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, AsyncMock
 from backend.main import app
+from backend.auth import get_current_user_id
+from tests.conftest import TEST_USER_ID
+
+
+def mock_get_current_user_id():
+    """Mock auth dependency that returns test user ID."""
+    return TEST_USER_ID
 
 
 @pytest.fixture
 def client():
-    """Create FastAPI test client."""
-    return TestClient(app)
+    """Create FastAPI test client with mocked auth."""
+    # Override auth dependency
+    app.dependency_overrides[get_current_user_id] = mock_get_current_user_id
+    yield TestClient(app)
+    # Clean up
+    app.dependency_overrides.clear()
 
 
 class TestHealthCheck:
     """Test health check endpoint."""
 
-    def test_root_endpoint(self, client):
-        """Test root health check."""
-        response = client.get("/")
+    def test_health_endpoint(self, client):
+        """Test health check."""
+        response = client.get("/health")
 
         assert response.status_code == 200
         assert response.json()["status"] == "ok"

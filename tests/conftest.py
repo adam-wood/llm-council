@@ -9,15 +9,23 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 
+# Test user ID for all tests
+TEST_USER_ID = "user_test123"
+
+
+@pytest.fixture
+def test_user_id():
+    """Return test user ID."""
+    return TEST_USER_ID
+
+
 @pytest.fixture
 def temp_data_dir(monkeypatch):
     """Create a temporary directory for test data storage."""
     temp_dir = tempfile.mkdtemp()
 
-    # Monkey-patch the data directories
-    monkeypatch.setattr("backend.storage.DATA_DIR", temp_dir)
-    monkeypatch.setattr("backend.agent_storage.AGENTS_FILE", Path(temp_dir) / "agents.json")
-    monkeypatch.setattr("backend.prompt_storage.PROMPTS_FILE", Path(temp_dir) / "prompts.json")
+    # Monkey-patch the data base directory
+    monkeypatch.setattr("backend.config.DATA_BASE_DIR", temp_dir)
 
     yield temp_dir
 

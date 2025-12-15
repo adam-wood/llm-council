@@ -1,10 +1,10 @@
 # LLM Council → Personal Board of Directors
 
-![llmcouncil](header.jpg)
+![personalBoard](personalBoard.jpg)
 
 ## About This Project
 
-This project began as **[LLM Council](https://github.com/karpathy/llm-council)** by **[Andrej Karpathy](https://github.com/karpathy)** - a brilliant "vibe code" Saturday hack exploring how multiple LLMs can deliberate together through a 3-stage process of individual responses, peer review, and synthesis.
+This project began as **[LLM Council](https://github.com/karpathy/llm-council)** by **[Andrej Karpathy](https://github.com/karpathy)** - a nifty "vibe code" Saturday hack exploring how multiple LLMs can deliberate together through a 3-stage process of individual responses, peer review, and synthesis.
 
 **This fork extends that concept** into a **Personal Board of Directors** - where instead of generic LLMs, you configure specialized AI agents (Ethics Advisor, Technology Expert, Leadership Coach, Financial Advisor, etc.) that provide perspective-aware guidance on your questions and decisions.
 
@@ -124,7 +124,12 @@ Then open http://localhost:5173 in your browser.
 - **Storage:** JSON files in `data/` (conversations, agents, prompts)
 - **Package Management:** uv for Python, npm for JavaScript
 
-## Key Features (v0.3.0)
+## Key Features (v1.0.0 MVP)
+
+🔐 **Multi-User Authentication**
+- Clerk authentication with passkeys and SSO (Google/Microsoft)
+- Per-user data isolation - each user has their own board
+- JWT-based API security
 
 📋 **Agent Configuration System**
 - Define custom board members with titles, roles, and expertise areas
@@ -139,9 +144,14 @@ Then open http://localhost:5173 in your browser.
 - Reset to defaults anytime
 
 💾 **Persistent Storage**
-- All configurations saved locally in JSON
+- User-scoped JSON storage (`data/users/{user_id}/`)
 - Conversation history with full metadata
 - Import/export ready for future features
+
+🚀 **Production Deployment**
+- Dockerized for easy deployment
+- Railway-ready with persistent volume support
+- Environment-based configuration
 
 ## Project Structure
 
@@ -164,6 +174,29 @@ llm-council/
     ├── prompts.json          # Custom prompts
     └── conversations/        # Chat history
 ```
+
+## Production Deployment (Railway)
+
+The app is configured for one-click deployment to Railway:
+
+1. **Prerequisites:**
+   - Railway account
+   - Clerk account (for authentication)
+   - OpenRouter API key
+
+2. **Deploy:**
+   - Connect your GitHub repo to Railway
+   - Add environment variables:
+     - `OPENROUTER_API_KEY` - Your OpenRouter key
+     - `CLERK_ISSUER` - Your Clerk instance URL (e.g., `https://your-app.clerk.accounts.dev`)
+     - `VITE_CLERK_PUBLISHABLE_KEY` - Hardcoded in Dockerfile (public key)
+   - Add persistent volume: mount `data` to `/app/data`
+
+3. **Configure Clerk:**
+   - Enable Passkeys, Google OAuth, and/or Microsoft OAuth
+   - Add your Railway domain to allowed origins
+
+See `Dockerfile` and `railway.toml` for configuration details.
 
 ## Contributing
 
