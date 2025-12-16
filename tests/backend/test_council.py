@@ -11,6 +11,7 @@ from backend.council import (
     stage3_synthesize_final,
     run_full_council
 )
+from tests.conftest import TEST_USER_ID
 
 
 class TestParseRankingFromText:
@@ -245,14 +246,14 @@ class TestStage1CollectResponses:
     """Test Stage 1: Collect responses."""
 
     @pytest.mark.asyncio
-    async def test_with_active_agents(self, sample_agents, temp_data_dir):
+    async def test_with_active_agents(self, sample_agents, temp_data_dir, test_user_id):
         """Test stage 1 with active agents configured."""
         # Setup agents
-        with patch("backend.agent_storage.get_active_agents", return_value=sample_agents[:2]):
+        with patch("backend.council.agent_storage.get_active_agents", return_value=sample_agents[:2]):
             with patch("backend.council.query_model") as mock_query:
                 mock_query.return_value = {"content": "Test response"}
 
-                result = await stage1_collect_responses("Test query?")
+                result = await stage1_collect_responses(test_user_id, "Test query?")
 
                 assert len(result) == 2
                 assert result[0]["agent_title"] == "Agent One"
@@ -260,21 +261,21 @@ class TestStage1CollectResponses:
                 assert all("response" in r for r in result)
 
     @pytest.mark.asyncio
-    async def test_legacy_fallback(self, temp_data_dir):
+    async def test_legacy_fallback(self, temp_data_dir, test_user_id):
         """Test fallback to COUNCIL_MODELS when no agents configured."""
-        with patch("backend.agent_storage.get_active_agents", return_value=[]):
+        with patch("backend.council.agent_storage.get_active_agents", return_value=[]):
             with patch("backend.council.COUNCIL_MODELS", ["test/model-1", "test/model-2"]):
                 with patch("backend.council.query_model") as mock_query:
                     mock_query.return_value = {"content": "Test response"}
 
-                    result = await stage1_collect_responses("Test query?")
+                    result = await stage1_collect_responses(test_user_id, "Test query?")
 
                     assert len(result) == 2
 
     @pytest.mark.asyncio
-    async def test_graceful_degradation_on_failures(self, sample_agents):
+    async def test_graceful_degradation_on_failures(self, sample_agents, test_user_id):
         """Test that stage 1 continues with successful responses when some fail."""
-        with patch("backend.agent_storage.get_active_agents", return_value=sample_agents[:2]):
+        with patch("backend.council.agent_storage.get_active_agents", return_value=sample_agents[:2]):
             with patch("backend.council.query_model") as mock_query:
                 # First call succeeds, second fails
                 mock_query.side_effect = [
@@ -282,23 +283,23 @@ class TestStage1CollectResponses:
                     None
                 ]
 
-                result = await stage1_collect_responses("Test query?")
+                result = await stage1_collect_responses(test_user_id, "Test query?")
 
                 # Should only have one successful response
                 assert len(result) == 1
                 assert result[0]["response"] == "Success"
 
     @pytest.mark.asyncio
-    async def test_agent_specific_prompt_priority(self, sample_agent):
+    async def test_agent_specific_prompt_priority(self, sample_agent, test_user_id):
         """Test that agent-specific prompts take priority."""
         agent_with_prompt = sample_agent.copy()
         agent_with_prompt["prompts"] = {"stage1": "Custom prompt: {user_query}"}
 
-        with patch("backend.agent_storage.get_active_agents", return_value=[agent_with_prompt]):
+        with patch("backend.council.agent_storage.get_active_agents", return_value=[agent_with_prompt]):
             with patch("backend.council.query_model") as mock_query:
                 mock_query.return_value = {"content": "Response"}
 
-                await stage1_collect_responses("Test?")
+                await stage1_collect_responses(test_user_id, "Test?")
 
                 # Check that the custom prompt was used
                 call_args = mock_query.call_args
@@ -310,13 +311,14 @@ class TestStage2CollectRankings:
     """Test Stage 2: Collect rankings."""
 
     @pytest.mark.asyncio
-    async def test_anonymization(self, sample_stage1_results, sample_agents):
+    async def test_anonymization(self, sample_stage1_results, sample_agents, test_user_id):
         """Test that responses are properly anonymized."""
-        with patch("backend.agent_storage.get_active_agents", return_value=sample_agents[:3]):
+        with patch("backend.council.agent_storage.get_active_agents", return_value=sample_agents[:3]):
             with patch("backend.council.query_model") as mock_query:
                 mock_query.return_value = {"content": "FINAL RANKING:\n1. Response A"}
 
                 results, label_to_model = await stage2_collect_rankings(
+                    test_user_id,
                     "Test query?",
                     sample_stage1_results
                 )
@@ -328,15 +330,16 @@ class TestStage2CollectRankings:
                 assert label_to_model["Response A"]["agent_title"] == "Agent One"
 
     @pytest.mark.asyncio
-    async def test_ranking_parsing(self, sample_stage1_results, sample_agents):
+    async def test_ranking_parsing(self, sample_stage1_results, sample_agents, test_user_id):
         """Test that rankings are parsed correctly."""
-        with patch("backend.agent_storage.get_active_agents", return_value=sample_agents[:1]):
+        with patch("backend.council.agent_storage.get_active_agents", return_value=sample_agents[:1]):
             with patch("backend.council.query_model") as mock_query:
                 mock_query.return_value = {
                     "content": "FINAL RANKING:\n1. Response B\n2. Response A\n3. Response C"
                 }
 
                 results, _ = await stage2_collect_rankings(
+                    test_user_id,
                     "Test query?",
                     sample_stage1_results
                 )
@@ -344,13 +347,14 @@ class TestStage2CollectRankings:
                 assert results[0]["parsed_ranking"] == ["Response B", "Response A", "Response C"]
 
     @pytest.mark.asyncio
-    async def test_legacy_fallback_stage2(self, sample_stage1_results):
+    async def test_legacy_fallback_stage2(self, sample_stage1_results, test_user_id):
         """Test fallback when no agents configured in stage 2."""
-        with patch("backend.agent_storage.get_active_agents", return_value=[]):
+        with patch("backend.council.agent_storage.get_active_agents", return_value=[]):
             with patch("backend.council.query_model") as mock_query:
                 mock_query.return_value = {"content": "FINAL RANKING:\n1. Response A"}
 
                 results, _ = await stage2_collect_rankings(
+                    test_user_id,
                     "Test query?",
                     sample_stage1_results
                 )
@@ -363,7 +367,7 @@ class TestStage3SynthesizeFinal:
     """Test Stage 3: Final synthesis."""
 
     @pytest.mark.asyncio
-    async def test_with_chairman_agent(self, sample_stage1_results):
+    async def test_with_chairman_agent(self, sample_stage1_results, test_user_id):
         """Test synthesis with designated chairman."""
         chairman = {
             "id": "chairman-1",
@@ -382,11 +386,12 @@ class TestStage3SynthesizeFinal:
             }
         ]
 
-        with patch("backend.agent_storage.get_chairman", return_value=chairman):
+        with patch("backend.council.agent_storage.get_chairman", return_value=chairman):
             with patch("backend.council.query_model") as mock_query:
                 mock_query.return_value = {"content": "Final synthesis"}
 
                 result = await stage3_synthesize_final(
+                    test_user_id,
                     "Test query?",
                     sample_stage1_results,
                     stage2_results
@@ -397,16 +402,17 @@ class TestStage3SynthesizeFinal:
                 assert result["response"] == "Final synthesis"
 
     @pytest.mark.asyncio
-    async def test_fallback_to_chairman_model(self, sample_stage1_results):
+    async def test_fallback_to_chairman_model(self, sample_stage1_results, test_user_id):
         """Test fallback to CHAIRMAN_MODEL when no chairman agent."""
         stage2_results = []
 
-        with patch("backend.agent_storage.get_chairman", return_value=None):
+        with patch("backend.council.agent_storage.get_chairman", return_value=None):
             with patch("backend.council.CHAIRMAN_MODEL", "test/default-chairman"):
                 with patch("backend.council.query_model") as mock_query:
                     mock_query.return_value = {"content": "Final synthesis"}
 
                     result = await stage3_synthesize_final(
+                        test_user_id,
                         "Test query?",
                         sample_stage1_results,
                         stage2_results
@@ -415,11 +421,12 @@ class TestStage3SynthesizeFinal:
                     assert result["model"] == "test/default-chairman"
 
     @pytest.mark.asyncio
-    async def test_failure_handling(self, sample_stage1_results):
+    async def test_failure_handling(self, sample_stage1_results, test_user_id):
         """Test error handling when chairman query fails."""
-        with patch("backend.agent_storage.get_chairman", return_value=None):
+        with patch("backend.council.agent_storage.get_chairman", return_value=None):
             with patch("backend.council.query_model", return_value=None):
                 result = await stage3_synthesize_final(
+                    test_user_id,
                     "Test query?",
                     sample_stage1_results,
                     []
@@ -432,10 +439,10 @@ class TestRunFullCouncil:
     """Test the complete 3-stage pipeline."""
 
     @pytest.mark.asyncio
-    async def test_full_pipeline_success(self, sample_agents):
+    async def test_full_pipeline_success(self, sample_agents, test_user_id):
         """Test successful execution of all 3 stages."""
-        with patch("backend.agent_storage.get_active_agents", return_value=sample_agents[:2]):
-            with patch("backend.agent_storage.get_chairman", return_value=None):
+        with patch("backend.council.agent_storage.get_active_agents", return_value=sample_agents[:2]):
+            with patch("backend.council.agent_storage.get_chairman", return_value=None):
                 with patch("backend.council.query_model") as mock_query:
                     # Stage 1 responses
                     mock_query.side_effect = [
@@ -448,7 +455,7 @@ class TestRunFullCouncil:
                         {"content": "Final answer"}
                     ]
 
-                    stage1, stage2, stage3, metadata = await run_full_council("Test query?")
+                    stage1, stage2, stage3, metadata = await run_full_council(test_user_id, "Test query?")
 
                     assert len(stage1) == 2
                     assert len(stage2) == 2
@@ -457,21 +464,21 @@ class TestRunFullCouncil:
                     assert "aggregate_rankings" in metadata
 
     @pytest.mark.asyncio
-    async def test_all_models_fail_stage1(self, sample_agents):
+    async def test_all_models_fail_stage1(self, sample_agents, test_user_id):
         """Test when all models fail in stage 1."""
-        with patch("backend.agent_storage.get_active_agents", return_value=sample_agents[:2]):
+        with patch("backend.council.agent_storage.get_active_agents", return_value=sample_agents[:2]):
             with patch("backend.council.query_model", return_value=None):
-                stage1, stage2, stage3, metadata = await run_full_council("Test query?")
+                stage1, stage2, stage3, metadata = await run_full_council(test_user_id, "Test query?")
 
                 assert stage1 == []
                 assert stage2 == []
                 assert "Error" in stage3["response"] or stage3["model"] == "error"
 
     @pytest.mark.asyncio
-    async def test_metadata_structure(self, sample_agents):
+    async def test_metadata_structure(self, sample_agents, test_user_id):
         """Test that metadata has correct structure."""
-        with patch("backend.agent_storage.get_active_agents", return_value=sample_agents[:2]):
-            with patch("backend.agent_storage.get_chairman", return_value=None):
+        with patch("backend.council.agent_storage.get_active_agents", return_value=sample_agents[:2]):
+            with patch("backend.council.agent_storage.get_chairman", return_value=None):
                 with patch("backend.council.query_model") as mock_query:
                     mock_query.side_effect = [
                         {"content": "Response 1"},
@@ -481,7 +488,7 @@ class TestRunFullCouncil:
                         {"content": "Final"}
                     ]
 
-                    _, _, _, metadata = await run_full_council("Test query?")
+                    _, _, _, metadata = await run_full_council(test_user_id, "Test query?")
 
                     assert "label_to_model" in metadata
                     assert "aggregate_rankings" in metadata

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './AgentManager.css';
 
 // Agent role templates with pre-defined configurations
@@ -90,11 +90,7 @@ function AgentManager({ api }) {
   // Template selection modal
   const [showTemplates, setShowTemplates] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [agentsData, chairmanData] = await Promise.all([
@@ -109,7 +105,11 @@ function AgentManager({ api }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [api]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleCreateAgent = (template = null) => {
     setModalMode('create');

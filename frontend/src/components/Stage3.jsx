@@ -4,6 +4,16 @@ import './Stage3.css';
 
 export default function Stage3({ finalResponse }) {
   const [showPrompt, setShowPrompt] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    const text = finalResponse?.response;
+    if (text) {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   if (!finalResponse) {
     return null;
@@ -20,14 +30,23 @@ export default function Stage3({ finalResponse }) {
           <div className="chairman-model">
             {finalResponse.model}
           </div>
-          {finalResponse.prompt && (
+          <div className="chairman-actions">
+            {finalResponse.prompt && (
+              <button
+                className="toggle-prompt-btn"
+                onClick={() => setShowPrompt(!showPrompt)}
+              >
+                {showPrompt ? '🔼 Hide Prompt' : '🔽 Show Prompt'}
+              </button>
+            )}
             <button
-              className="toggle-prompt-btn"
-              onClick={() => setShowPrompt(!showPrompt)}
+              className="copy-btn"
+              onClick={handleCopy}
+              title="Copy response as markdown"
             >
-              {showPrompt ? '🔼 Hide Prompt' : '🔽 Show Prompt'}
+              {copied ? '✓ Copied' : '📋 Copy'}
             </button>
-          )}
+          </div>
         </div>
         {showPrompt && finalResponse.prompt && (
           <div className="prompt-display">

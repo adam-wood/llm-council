@@ -27,7 +27,6 @@ test = [
 packages = ["backend"]
 
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
@@ -38,6 +37,9 @@ addopts = [
     "--cov-report=html",
     "-v"
 ]
+
+[tool.pytest_asyncio]
+asyncio_mode = "auto"
 
 [build-system]
 requires = ["setuptools>=61.0"]

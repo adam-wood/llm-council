@@ -161,3 +161,59 @@
   background: #ccc;
   border-color: #ccc;
 }
+
+/* Floating Stage Navigation */
+.stage-nav {
+  position: fixed;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  padding: 12px 8px;
+  border-radius: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+
+.stage-nav-label {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  margin-bottom: 4px;
+}
+
+.stage-nav-btn {
+  width: 36px;
+  height: 36px;
+  border: 2px solid #d0d0d0;
+  border-radius: 50%;
+  background: white;
+  color: #666;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stage-nav-btn:hover {
+  border-color: #4a90e2;
+  color: #4a90e2;
+  transform: scale(1.1);
+}
+
+.stage-nav-btn.active {
+  background: #4a90e2;
+  border-color: #4a90e2;
+  color: white;
+}

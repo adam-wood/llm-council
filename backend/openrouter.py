@@ -5,6 +5,11 @@ from typing import List, Dict, Any, Optional
 from .config import OPENROUTER_API_KEY, OPENROUTER_API_URL
 
 
+class OpenRouterCreditsExhaustedError(Exception):
+    """Raised when OpenRouter API credits are exhausted."""
+    pass
+
+
 async def query_model(
     model: str,
     messages: List[Dict[str, str]],
@@ -20,6 +25,9 @@ async def query_model(
 
     Returns:
         Response dict with 'content' and optional 'reasoning_details', or None if failed
+
+    Raises:
+        OpenRouterCreditsExhaustedError: When API credits are exhausted (HTTP 402)
     """
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -38,6 +46,13 @@ async def query_model(
                 headers=headers,
                 json=payload
             )
+
+            # Check for credits exhausted (HTTP 402 Payment Required)
+            if response.status_code == 402:
+                raise OpenRouterCreditsExhaustedError(
+                    "OpenRouter API credits exhausted. Daily limit resets at midnight UTC."
+                )
+
             response.raise_for_status()
 
             data = response.json()
@@ -48,6 +63,9 @@ async def query_model(
                 'reasoning_details': message.get('reasoning_details')
             }
 
+    except OpenRouterCreditsExhaustedError:
+        # Re-raise credit errors so they propagate up
+        raise
     except Exception as e:
         print(f"Error querying model {model}: {e}")
         return None

@@ -5,6 +5,16 @@ import './Stage1.css';
 export default function Stage1({ responses }) {
   const [activeTab, setActiveTab] = useState(0);
   const [showPrompt, setShowPrompt] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    const text = responses[activeTab]?.response;
+    if (text) {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   if (!responses || responses.length === 0) {
     return null;
@@ -34,14 +44,23 @@ export default function Stage1({ responses }) {
             {currentResponse.agent_title || 'Agent'}
           </div>
           <div className="model-name">{currentResponse.model}</div>
-          {currentResponse.prompt && (
+          <div className="agent-actions">
+            {currentResponse.prompt && (
+              <button
+                className="toggle-prompt-btn"
+                onClick={() => setShowPrompt(!showPrompt)}
+              >
+                {showPrompt ? '🔼 Hide Prompt' : '🔽 Show Prompt'}
+              </button>
+            )}
             <button
-              className="toggle-prompt-btn"
-              onClick={() => setShowPrompt(!showPrompt)}
+              className="copy-btn"
+              onClick={handleCopy}
+              title="Copy response as markdown"
             >
-              {showPrompt ? '🔼 Hide Prompt' : '🔽 Show Prompt'}
+              {copied ? '✓ Copied' : '📋 Copy'}
             </button>
-          )}
+          </div>
         </div>
         {showPrompt && currentResponse.prompt && (
           <div className="prompt-display">

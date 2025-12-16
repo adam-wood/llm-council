@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './PromptManager.css';
 
 function PromptManager({ api }) {
@@ -13,18 +13,7 @@ function PromptManager({ api }) {
   const [error, setError] = useState(null);
   const [saveMessage, setSaveMessage] = useState('');
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    if (prompts && selectedModel) {
-      loadPromptForSelection();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStage, selectedModel, prompts]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [promptsData, modelsData] = await Promise.all([
@@ -39,7 +28,18 @@ function PromptManager({ api }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [api]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    if (prompts && selectedModel) {
+      loadPromptForSelection();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStage, selectedModel, prompts]);
 
   const loadPromptForSelection = () => {
     if (!prompts) return;

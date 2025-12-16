@@ -22,6 +22,7 @@ from .council import (
     stage3_synthesize_final, calculate_aggregate_rankings
 )
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
+from .openrouter import OpenRouterCreditsExhaustedError
 
 app = FastAPI(title="LLM Council API")
 
@@ -256,6 +257,10 @@ async def send_message_stream(
 
             # Send completion event
             yield f"data: {json.dumps({'type': 'complete'})}\n\n"
+
+        except OpenRouterCreditsExhaustedError as e:
+            # Send specific error for credits exhausted
+            yield f"data: {json.dumps({'type': 'error', 'error_code': 'credits_exhausted', 'message': str(e)})}\n\n"
 
         except Exception as e:
             # Send error event

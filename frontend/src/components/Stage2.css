@@ -133,8 +133,15 @@
   font-family: monospace;
 }
 
-.stage2 .toggle-prompt-btn {
+.stage2 .agent-actions {
   margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.stage2 .toggle-prompt-btn,
+.stage2 .copy-btn {
   padding: 4px 12px;
   background: #f0f0f0;
   border: 1px solid #d0d0d0;
@@ -145,10 +152,15 @@
   transition: all 0.2s;
 }
 
-.stage2 .toggle-prompt-btn:hover {
+.stage2 .toggle-prompt-btn:hover,
+.stage2 .copy-btn:hover {
   background: #e0e0e0;
   border-color: #4a90e2;
   color: #4a90e2;
+}
+
+.stage2 .copy-btn {
+  min-width: 80px;
 }
 
 .stage2 .prompt-display {

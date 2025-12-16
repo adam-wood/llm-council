@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { AuthWrapper, UserMenu } from './components/AuthWrapper';
@@ -20,36 +20,39 @@ function AppContent() {
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentView, setCurrentView] = useState('chat'); // 'chat' or 'prompts'
+  const [errorMessage, setErrorMessage] = useState(null);
 
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     try {
       const convs = await api.listConversations();
       setConversations(convs);
     } catch (error) {
       console.error('Failed to load conversations:', error);
     }
-  };
+  }, [api]);
 
-  const loadConversation = async (id) => {
+  const loadConversation = useCallback(async (id) => {
     try {
       const conv = await api.getConversation(id);
       setCurrentConversation(conv);
     } catch (error) {
       console.error('Failed to load conversation:', error);
     }
-  };
+  }, [api]);
 
   // Load conversations on mount
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadConversations();
-  }, [api]);
+  }, [loadConversations]);
 
   // Load conversation details when selected
   useEffect(() => {
     if (currentConversationId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadConversation(currentConversationId);
     }
-  }, [currentConversationId, api]);
+  }, [currentConversationId, loadConversation]);
 
   const handleNewConversation = async () => {
     try {
@@ -89,6 +92,7 @@ function AppContent() {
     if (!currentConversationId) return;
 
     setIsLoading(true);
+    setErrorMessage(null); // Clear any previous errors
     try {
       // Optimistically add user message to UI
       const userMessage = { role: 'user', content };
@@ -191,6 +195,13 @@ function AppContent() {
 
           case 'error':
             console.error('Stream error:', event.message);
+            if (event.error_code === 'credits_exhausted') {
+              setErrorMessage(
+                'OpenRouter API credits exhausted. Daily limit resets at midnight UTC. Please try again later.'
+              );
+            } else {
+              setErrorMessage(event.message || 'An error occurred while processing your request.');
+            }
             setIsLoading(false);
             break;
 
@@ -212,6 +223,19 @@ function AppContent() {
   return (
     <div className="app">
       <UserMenu />
+      {errorMessage && (
+        <div className="error-banner">
+          <span className="error-icon">⚠️</span>
+          <span className="error-text">{errorMessage}</span>
+          <button
+            className="error-dismiss"
+            onClick={() => setErrorMessage(null)}
+            aria-label="Dismiss error"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <PanelGroup direction="horizontal">
         <Panel defaultSize={20} minSize={15} maxSize={40}>
           <Sidebar

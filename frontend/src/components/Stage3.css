@@ -32,8 +32,15 @@
   font-family: monospace;
 }
 
-.stage3 .toggle-prompt-btn {
+.chairman-actions {
   margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.stage3 .toggle-prompt-btn,
+.stage3 .copy-btn {
   padding: 4px 12px;
   background: #f0f0f0;
   border: 1px solid #d0d0d0;
@@ -44,10 +51,15 @@
   transition: all 0.2s;
 }
 
-.stage3 .toggle-prompt-btn:hover {
+.stage3 .toggle-prompt-btn:hover,
+.stage3 .copy-btn:hover {
   background: #e0e0e0;
   border-color: #2d8a2d;
   color: #2d8a2d;
+}
+
+.stage3 .copy-btn {
+  min-width: 80px;
 }
 
 .stage3 .prompt-display {

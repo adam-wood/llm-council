@@ -3,7 +3,7 @@
 import pytest
 import httpx
 from unittest.mock import AsyncMock, MagicMock, patch
-from backend.openrouter import query_model, query_models_parallel
+from backend.openrouter import query_model, query_models_parallel, OpenRouterCreditsExhaustedError
 
 
 class TestQueryModel:
@@ -66,6 +66,24 @@ class TestQueryModel:
             result = await query_model("test/model", [{"role": "user", "content": "Test"}])
 
             assert result is None
+
+    @pytest.mark.asyncio
+    async def test_credits_exhausted_error(self):
+        """Test that HTTP 402 raises OpenRouterCreditsExhaustedError."""
+        mock_response = MagicMock()
+        mock_response.status_code = 402
+
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            with pytest.raises(OpenRouterCreditsExhaustedError) as exc_info:
+                await query_model("test/model", [{"role": "user", "content": "Test"}])
+
+            assert "credits exhausted" in str(exc_info.value).lower()
+            assert "midnight UTC" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_timeout(self):

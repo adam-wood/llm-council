@@ -17,6 +17,16 @@ function deAnonymizeText(text, labelToModel) {
 export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
   const [activeTab, setActiveTab] = useState(0);
   const [showPrompt, setShowPrompt] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    const text = rankings[activeTab]?.ranking;
+    if (text) {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   if (!rankings || rankings.length === 0) {
     return null;
@@ -54,14 +64,23 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
           <div className="ranking-model">
             {currentRanking.model}
           </div>
-          {currentRanking.prompt && (
+          <div className="agent-actions">
+            {currentRanking.prompt && (
+              <button
+                className="toggle-prompt-btn"
+                onClick={() => setShowPrompt(!showPrompt)}
+              >
+                {showPrompt ? '🔼 Hide Prompt' : '🔽 Show Prompt'}
+              </button>
+            )}
             <button
-              className="toggle-prompt-btn"
-              onClick={() => setShowPrompt(!showPrompt)}
+              className="copy-btn"
+              onClick={handleCopy}
+              title="Copy evaluation as markdown"
             >
-              {showPrompt ? '🔼 Hide Prompt' : '🔽 Show Prompt'}
+              {copied ? '✓ Copied' : '📋 Copy'}
             </button>
-          )}
+          </div>
         </div>
         {showPrompt && currentRanking.prompt && (
           <div className="prompt-display">
