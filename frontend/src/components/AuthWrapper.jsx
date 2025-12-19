@@ -7,7 +7,7 @@ export function AuthWrapper({ children }) {
       <SignedOut>
         <div className="auth-container">
           <div className="auth-branding">
-            <h1>LLM Council</h1>
+            <h1>Personal Boardroom</h1>
             <p>Your personal board of AI advisors</p>
           </div>
           <SignIn
