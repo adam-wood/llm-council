@@ -60,3 +60,40 @@
 .error-dismiss:hover {
   opacity: 1;
 }
+
+/* Error Boundary */
+.error-boundary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  padding: 20px;
+  text-align: center;
+  background: #f8f9fa;
+}
+
+.error-boundary h2 {
+  margin: 0 0 12px 0;
+  color: #dc3545;
+}
+
+.error-boundary p {
+  margin: 0 0 20px 0;
+  color: #6c757d;
+}
+
+.error-boundary button {
+  padding: 10px 24px;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.error-boundary button:hover {
+  background: #357abd;
+}

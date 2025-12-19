@@ -1,6 +1,10 @@
 """3-stage LLM Council orchestration."""
 
+import asyncio
+import re
+from collections import defaultdict
 from typing import List, Dict, Any, Tuple
+
 from .openrouter import query_models_parallel, query_model
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 from .prompt_storage import get_prompt_for_model
@@ -19,7 +23,6 @@ async def stage1_collect_responses(user_id: str, user_query: str) -> List[Dict[s
     Returns:
         List of dicts with 'agent', 'model', and 'response' keys
     """
-    import asyncio
 
     # Load active agents for this user, or fall back to config models
     agents = agent_storage.get_active_agents(user_id)
@@ -141,7 +144,6 @@ async def stage2_collect_rankings(
         return agent, response, ranking_prompt
 
     # Query all agents in parallel with their individual prompts
-    import asyncio
     tasks = [query_ranking_with_agent_prompt(agent) for agent in agents]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -250,7 +252,6 @@ def parse_ranking_from_text(ranking_text: str) -> List[str]:
     Returns:
         List of response labels in ranked order
     """
-    import re
 
     # Look for "FINAL RANKING:" section
     if "FINAL RANKING:" in ranking_text:
@@ -288,7 +289,6 @@ def calculate_aggregate_rankings(
     Returns:
         List of dicts with agent info and average rank, sorted best to worst
     """
-    from collections import defaultdict
 
     # Track positions for each agent (by agent_title)
     agent_positions = defaultdict(list)

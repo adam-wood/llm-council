@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, Component } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { AuthWrapper, UserMenu } from './components/AuthWrapper';
@@ -8,6 +8,36 @@ import PromptManager from './components/PromptManager';
 import AgentManager from './components/AgentManager';
 import { createAuthenticatedApi } from './api';
 import './App.css';
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('React error boundary caught:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="error-boundary">
+          <h2>Something went wrong</h2>
+          <p>Please refresh the page to continue.</p>
+          <button onClick={() => window.location.reload()}>
+            Refresh Page
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function AppContent() {
   const { getToken } = useAuth();
@@ -267,9 +297,11 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthWrapper>
-      <AppContent />
-    </AuthWrapper>
+    <ErrorBoundary>
+      <AuthWrapper>
+        <AppContent />
+      </AuthWrapper>
+    </ErrorBoundary>
   );
 }
 

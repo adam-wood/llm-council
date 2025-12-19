@@ -4,9 +4,9 @@ import os
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, FileResponse, HTMLResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Any
 import uuid
 import json
@@ -41,8 +41,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -53,31 +53,31 @@ class CreateConversationRequest(BaseModel):
 
 class SendMessageRequest(BaseModel):
     """Request to send a message in a conversation."""
-    content: str
+    content: str = Field(..., min_length=1, max_length=50000)
 
 
 class UpdatePromptRequest(BaseModel):
     """Request to update a prompt."""
-    name: str
-    description: str
-    template: str
-    notes: str = ""
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str = Field(..., max_length=1000)
+    template: str = Field(..., min_length=1, max_length=50000)
+    notes: str = Field(default="", max_length=5000)
 
 
 class CreateAgentRequest(BaseModel):
     """Request to create a new agent."""
-    title: str
-    role: str
-    model: str
+    title: str = Field(..., min_length=1, max_length=255)
+    role: str = Field(..., min_length=1, max_length=1000)
+    model: str = Field(..., min_length=3, max_length=100, pattern=r'^[a-zA-Z0-9_-]+/[a-zA-Z0-9._-]+$')
     prompts: Dict[str, str] = {}
     active: bool = True
 
 
 class UpdateAgentRequest(BaseModel):
     """Request to update an agent."""
-    title: str = None
-    role: str = None
-    model: str = None
+    title: str = Field(default=None, min_length=1, max_length=255)
+    role: str = Field(default=None, min_length=1, max_length=1000)
+    model: str = Field(default=None, min_length=3, max_length=100, pattern=r'^[a-zA-Z0-9_-]+/[a-zA-Z0-9._-]+$')
     prompts: Dict[str, str] = None
     active: bool = None
 

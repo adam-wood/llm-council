@@ -202,7 +202,7 @@ class TestAgentEndpoints:
         create_response = client.post("/api/agents", json={
             "title": "Test Agent",
             "role": "Role",
-            "model": "model"
+            "model": "test/model-name"
         })
         agent_id = create_response.json()["id"]
 
@@ -225,7 +225,7 @@ class TestAgentEndpoints:
         create_response = client.post("/api/agents", json={
             "title": "Original",
             "role": "Role",
-            "model": "model"
+            "model": "test/model-name"
         })
         agent_id = create_response.json()["id"]
 
@@ -252,7 +252,7 @@ class TestAgentEndpoints:
         create_response = client.post("/api/agents", json={
             "title": "Test",
             "role": "Role",
-            "model": "model"
+            "model": "test/model-name"
         })
         agent_id = create_response.json()["id"]
 
@@ -292,7 +292,7 @@ class TestAgentEndpoints:
         create_response = client.post("/api/agents", json={
             "title": "Chairman",
             "role": "Role",
-            "model": "model"
+            "model": "test/model-name"
         })
         agent_id = create_response.json()["id"]
 
