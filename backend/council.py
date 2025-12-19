@@ -5,7 +5,7 @@ import re
 from collections import defaultdict
 from typing import List, Dict, Any, Tuple
 
-from .openrouter import query_models_parallel, query_model
+from .openrouter import query_models_parallel, query_model, OpenRouterCreditsExhaustedError
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 from .prompt_storage import get_prompt_for_model
 from . import agent_storage
@@ -61,7 +61,10 @@ async def stage1_collect_responses(user_id: str, user_query: str) -> List[Dict[s
     stage1_results = []
     for result in results:
         if isinstance(result, Exception):
-            # Skip failed queries
+            # Propagate credits exhausted error immediately
+            if isinstance(result, OpenRouterCreditsExhaustedError):
+                raise result
+            # Skip other failed queries (graceful degradation)
             continue
         agent, response, prompt = result
         if response is not None:  # Only include successful responses
@@ -151,7 +154,10 @@ async def stage2_collect_rankings(
     stage2_results = []
     for result in results:
         if isinstance(result, Exception):
-            # Skip failed queries
+            # Propagate credits exhausted error immediately
+            if isinstance(result, OpenRouterCreditsExhaustedError):
+                raise result
+            # Skip other failed queries (graceful degradation)
             continue
         agent, response, prompt = result
         if response is not None:

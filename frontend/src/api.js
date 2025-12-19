@@ -111,47 +111,61 @@ export function createAuthenticatedApi(getToken) {
      * @param {string} conversationId - The conversation ID
      * @param {string} content - The message content
      * @param {function} onEvent - Callback function for each event: (eventType, data) => void
+     * @param {number} timeoutMs - Request timeout in milliseconds (default: 5 minutes)
      * @returns {Promise<void>}
      */
-    async sendMessageStream(conversationId, content, onEvent) {
+    async sendMessageStream(conversationId, content, onEvent, timeoutMs = 5 * 60 * 1000) {
       const token = await getToken();
-      const response = await fetch(
-        `${API_BASE}/api/conversations/${conversationId}/message/stream`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ content }),
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const response = await fetch(
+          `${API_BASE}/api/conversations/${conversationId}/message/stream`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ content }),
+            signal: controller.signal,
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to send message');
         }
-      );
 
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            try {
-              const event = JSON.parse(data);
-              onEvent(event.type, event);
-            } catch (e) {
-              console.error('Failed to parse SSE event:', e);
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              try {
+                const event = JSON.parse(data);
+                onEvent(event.type, event);
+              } catch (e) {
+                console.error('Failed to parse SSE event:', e);
+              }
             }
           }
         }
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Request timed out. The server took too long to respond.');
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeoutId);
       }
     },
 

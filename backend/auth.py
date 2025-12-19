@@ -118,10 +118,26 @@ def verify_clerk_token(
         raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
     except HTTPException:
         raise
-    except Exception as e:
+    except ValueError as e:
+        # JWKS fetch or key parsing errors
+        logger.error(f"JWKS/key error: {str(e)}", exc_info=True)
         raise HTTPException(
-            status_code=401,
-            detail=f"Authentication failed: {str(e)}"
+            status_code=503,
+            detail="Authentication service temporarily unavailable"
+        )
+    except httpx.RequestError as e:
+        # Network errors when fetching JWKS
+        logger.error(f"Network error fetching JWKS: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail="Authentication service temporarily unavailable"
+        )
+    except Exception as e:
+        # Unexpected errors - log full traceback for debugging
+        logger.error(f"Unexpected auth error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal authentication error"
         )
 
 
