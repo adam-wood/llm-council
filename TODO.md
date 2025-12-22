@@ -148,21 +148,23 @@
   - API key management in frontend
   - Model marketplace/browser integration with OpenRouter
  
-- [ ] Make the LLM model selectable from a drop down. 
-    - The dropdown options should be based on a list be stored in a config file so new models can be easily added. 
+- [x] Make the LLM model selectable from a drop down.
+    - The dropdown options should be based on a list be stored in a config file so new models can be easily added.
       - Pre fill this config file from the available openrouter models as of 2025-12
     - The dropdown should support filter/typeahead.
 
 - [x] Make the vertical divider between left and right hand panes movable / resizeable
 - [x] Enable conversations to be deleted from sidebar
 - [x] Enable the prompt that was used for each LLM/Agent response to be viewed in the conversation view. The prompt should be shown/hidden from a toggle. This is becuase the prompts can now change. 
-  - For the 'Aggregate Rankings (Street Cred)' section, show how the votes were calculated. This could be via a matrix where we see what each agent voted for each response. The cells could be colour coded to show clusters/patterns.
+- [ ] For the 'Aggregate Rankings (Street Cred)' section, show how the votes were calculated. This could be via a matrix where we see what each agent voted for each response. The cells could be colour coded to show clusters/patterns.
 
-- [ ] Enable responses to be easily copied in markdown format from a button. 
-- [ ] Add vertical scroll bar to Agent Management Screen
-- [ ] In conversation view, it is often neccesary to scroll for extended lengths to get to the start of each stage - suggestion: Add floating buttons in conversation view to easily jump to stage 1, 2, 3.
-- [ ] If openrouter indicates we have run out of credit, provide an info message to prompt the user to try again after midnight UK time.
-- [ ] Allow user to assign their own emoji to each agent, and persist this.
+- [x] Enable responses to be easily copied in markdown format from a button. 
+- [x] Add vertical scroll bar to Agent Management Screen
+- [x] In conversation view, it is often neccesary to scroll for extended lengths to get to the start of each stage - suggestion: Add floating buttons in conversation view to easily jump to stage 1, 2, 3.
+- [x] If openrouter indicates we have run out of credit, provide an info message to prompt the user to try again after midnight UK time.
+- [x] Allow user to assign their own emoji to each agent, and persist this.
+- [ ] Warning on first login that this service is a proof of concept and has not been optimised for security/privacy. Users should not enter private or confidential material into the chat.
+
 
 ## Documentation
 

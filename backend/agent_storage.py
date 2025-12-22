@@ -105,7 +105,8 @@ def create_agent(
     role: str,
     model: str,
     prompts: Optional[Dict[str, str]] = None,
-    active: bool = True
+    active: bool = True,
+    emoji: str = "🤖"
 ) -> Dict[str, Any]:
     """
     Create a new agent configuration for a user.
@@ -117,6 +118,7 @@ def create_agent(
         model: The LLM model identifier
         prompts: Optional custom prompts for each stage
         active: Whether the agent is active
+        emoji: Emoji icon for the agent
 
     Returns:
         The created agent configuration
@@ -130,6 +132,7 @@ def create_agent(
         "model": model,
         "prompts": prompts or {},
         "active": active,
+        "emoji": emoji,
         "created_at": datetime.utcnow().isoformat(),
         "updated_at": datetime.utcnow().isoformat()
     }
@@ -252,6 +255,7 @@ def initialize_default_agents_data() -> Dict[str, Any]:
                 "stage1": "You are the Ethics & Values Advisor on a personal board of directors. Evaluate the following question from an ethical perspective, considering moral principles, values, and long-term consequences:\n\n{user_query}"
             },
             "active": True,
+            "emoji": "⚖️",
             "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat()
         },
@@ -264,6 +268,7 @@ def initialize_default_agents_data() -> Dict[str, Any]:
                 "stage1": "You are the Technology & Innovation Expert on a personal board of directors. Analyze the following question from a technical and innovation perspective:\n\n{user_query}"
             },
             "active": True,
+            "emoji": "💻",
             "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat()
         },
@@ -276,6 +281,7 @@ def initialize_default_agents_data() -> Dict[str, Any]:
                 "stage1": "You are the Leadership & Strategy Coach on a personal board of directors. Provide strategic and leadership-focused guidance on:\n\n{user_query}"
             },
             "active": True,
+            "emoji": "🎯",
             "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat()
         },
@@ -288,6 +294,7 @@ def initialize_default_agents_data() -> Dict[str, Any]:
                 "stage1": "You are the Financial & Business Advisor on a personal board of directors. Analyze the following from a financial and business perspective:\n\n{user_query}"
             },
             "active": True,
+            "emoji": "💰",
             "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat()
         }

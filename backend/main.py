@@ -71,6 +71,7 @@ class CreateAgentRequest(BaseModel):
     model: str = Field(..., min_length=3, max_length=100, pattern=r'^[a-zA-Z0-9_-]+/[a-zA-Z0-9._-]+$')
     prompts: Dict[str, str] = {}
     active: bool = True
+    emoji: str = Field(default="🤖", max_length=10)
 
 
 class UpdateAgentRequest(BaseModel):
@@ -80,6 +81,7 @@ class UpdateAgentRequest(BaseModel):
     model: str = Field(default=None, min_length=3, max_length=100, pattern=r'^[a-zA-Z0-9_-]+/[a-zA-Z0-9._-]+$')
     prompts: Dict[str, str] = None
     active: bool = None
+    emoji: str = Field(default=None, max_length=10)
 
 
 class ConversationMetadata(BaseModel):
@@ -305,7 +307,8 @@ async def create_agent(
         role=request.role,
         model=request.model,
         prompts=request.prompts,
-        active=request.active
+        active=request.active,
+        emoji=request.emoji
     )
     return agent
 
@@ -367,6 +370,8 @@ async def update_agent(
         updates["prompts"] = request.prompts
     if request.active is not None:
         updates["active"] = request.active
+    if request.emoji is not None:
+        updates["emoji"] = request.emoji
 
     agent = agent_storage.update_agent(user_id, agent_id, updates)
     if not agent:

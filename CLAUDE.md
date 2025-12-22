@@ -119,6 +119,7 @@ Agents are the foundation of the Board of Directors concept. Each agent represen
   "title": "Ethics & Values Advisor",
   "role": "Provides ethical guidance...",
   "model": "anthropic/claude-sonnet-4.5",
+  "emoji": "⚖️",
   "prompts": {
     "stage1": "You are the Ethics & Values Advisor...",
     "stage2": "optional custom stage2 prompt",

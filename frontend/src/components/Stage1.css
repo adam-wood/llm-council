@@ -138,3 +138,13 @@
   color: #333;
   line-height: 1.6;
 }
+
+/* Emoji styles */
+.tab-emoji {
+  margin-right: 6px;
+}
+
+.agent-emoji {
+  margin-right: 8px;
+  font-size: 1.2em;
+}

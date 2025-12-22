@@ -25,6 +25,7 @@ export default function Stage3({ finalResponse }) {
       <div className="final-response">
         <div className="chairman-info">
           <div className="chairman-label">
+            {finalResponse.emoji && <span className="chairman-emoji">{finalResponse.emoji}</span>}
             Chairman: {finalResponse.agent_title || 'Chairman'}
           </div>
           <div className="chairman-model">

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import './AgentManager.css';
+import MODELS from '../data/models';
 
 // Agent role templates with pre-defined configurations
 const AGENT_TEMPLATES = [
@@ -113,12 +114,20 @@ function AgentManager({ api }) {
 
   const handleCreateAgent = (template = null) => {
     setModalMode('create');
-    setEditingAgent(template || {
+    setEditingAgent(template ? {
+      title: template.title,
+      role: template.role,
+      model: template.model,
+      prompts: template.prompts,
+      active: true,
+      emoji: template.icon || '🤖'
+    } : {
       title: '',
       role: '',
       model: 'anthropic/claude-sonnet-4.5',
       prompts: {},
-      active: true
+      active: true,
+      emoji: '🤖'
     });
     setShowModal(true);
     setShowTemplates(false);
@@ -202,7 +211,8 @@ function AgentManager({ api }) {
   };
 
   const getAgentIcon = (agent) => {
-    // Find matching template by title to get icon
+    // Use stored emoji, falling back to template match or default
+    if (agent.emoji) return agent.emoji;
     const template = AGENT_TEMPLATES.find(t => t.title === agent.title);
     return template?.icon || '🤖';
   };
@@ -337,6 +347,27 @@ function AgentManager({ api }) {
             </div>
 
             <div className="form-group">
+              <label>Avatar</label>
+              <div className="emoji-picker">
+                <div className="emoji-current">
+                  <span className="emoji-display">{editingAgent.emoji || '🤖'}</span>
+                </div>
+                <div className="emoji-options">
+                  {['🤖', '⚖️', '💻', '🎯', '💰', '🏥', '📈', '🎨', '🧠', '💡', '🔬', '📊', '🌍', '🎓', '⚡', '🛡️', '🔮', '🎭', '📚', '🏆'].map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className={`emoji-option ${editingAgent.emoji === emoji ? 'selected' : ''}`}
+                      onClick={() => setEditingAgent({ ...editingAgent, emoji })}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="form-group">
               <label>Role</label>
               <textarea
                 value={editingAgent.role}
@@ -350,10 +381,16 @@ function AgentManager({ api }) {
               <label>Model</label>
               <input
                 type="text"
+                list="model-options"
                 value={editingAgent.model}
                 onChange={(e) => setEditingAgent({ ...editingAgent, model: e.target.value })}
-                placeholder="e.g., anthropic/claude-sonnet-4.5"
+                placeholder="Type to search or enter custom model..."
               />
+              <datalist id="model-options">
+                {MODELS.map((model) => (
+                  <option key={model} value={model} />
+                ))}
+              </datalist>
             </div>
 
             <div className="form-group">

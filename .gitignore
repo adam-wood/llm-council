@@ -12,8 +12,9 @@ wheels/
 # Keys and secrets
 .env
 
-# Data files
+# Data files (backend storage)
 data/
+!frontend/src/data/
 
 # Frontend
 frontend/node_modules/

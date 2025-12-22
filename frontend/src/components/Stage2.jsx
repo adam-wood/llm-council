@@ -51,6 +51,7 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
             className={`tab ${activeTab === index ? 'active' : ''}`}
             onClick={() => setActiveTab(index)}
           >
+            {rank.emoji && <span className="tab-emoji">{rank.emoji}</span>}
             {rank.agent_title || rank.model.split('/')[1] || rank.model}
           </button>
         ))}
@@ -59,6 +60,7 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
       <div className="tab-content">
         <div className="agent-info">
           <div className="agent-name">
+            {currentRanking.emoji && <span className="agent-emoji">{currentRanking.emoji}</span>}
             {currentRanking.agent_title || 'Agent'}
           </div>
           <div className="ranking-model">
@@ -120,6 +122,7 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
               <div key={index} className="aggregate-item">
                 <span className="rank-position">#{index + 1}</span>
                 <span className="rank-model">
+                  {agg.emoji && <span className="rank-emoji">{agg.emoji}</span>}
                   {agg.agent_title || agg.model.split('/')[1] || agg.model}
                 </span>
                 <span className="rank-score">

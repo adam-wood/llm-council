@@ -72,6 +72,7 @@ async def stage1_collect_responses(user_id: str, user_query: str) -> List[Dict[s
                 "agent_id": agent["id"],
                 "agent_title": agent.get("title", agent["model"]),
                 "model": agent["model"],
+                "emoji": agent.get("emoji", "🤖"),
                 "response": response.get('content', ''),
                 "prompt": prompt
             })
@@ -102,7 +103,8 @@ async def stage2_collect_rankings(
     label_to_model = {
         f"Response {label}": {
             "agent_title": result['agent_title'],
-            "model": result['model']
+            "model": result['model'],
+            "emoji": result.get('emoji', '🤖')
         }
         for label, result in zip(labels, stage1_results)
     }
@@ -167,6 +169,7 @@ async def stage2_collect_rankings(
                 "agent_id": agent.get("id"),
                 "agent_title": agent.get("title", agent["model"]),
                 "model": agent["model"],
+                "emoji": agent.get("emoji", "🤖"),
                 "ranking": full_text,
                 "parsed_ranking": parsed,
                 "prompt": prompt
@@ -236,6 +239,7 @@ async def stage3_synthesize_final(
         return {
             "agent_title": chairman.get("title", "Chairman") if chairman else "Chairman",
             "model": chairman_model,
+            "emoji": chairman.get("emoji", "👑") if chairman else "👑",
             "response": "Error: Unable to generate final synthesis.",
             "prompt": chairman_prompt
         }
@@ -243,6 +247,7 @@ async def stage3_synthesize_final(
     return {
         "agent_title": chairman.get("title", "Chairman") if chairman else "Chairman",
         "model": chairman_model,
+        "emoji": chairman.get("emoji", "👑") if chairman else "👑",
         "response": response.get('content', ''),
         "prompt": chairman_prompt
     }
@@ -316,15 +321,16 @@ def calculate_aggregate_rankings(
     for agent_title, positions in agent_positions.items():
         if positions:
             avg_rank = sum(positions) / len(positions)
-            # Get model from label_to_model
-            model = next(
-                (info["model"] for label, info in label_to_model.items()
+            # Get model and emoji from label_to_model
+            agent_info = next(
+                (info for label, info in label_to_model.items()
                  if info["agent_title"] == agent_title),
-                ""
+                {}
             )
             aggregate.append({
                 "agent_title": agent_title,
-                "model": model,
+                "model": agent_info.get("model", ""),
+                "emoji": agent_info.get("emoji", "🤖"),
                 "average_rank": round(avg_rank, 2),
                 "rankings_count": len(positions)
             })

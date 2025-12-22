@@ -322,6 +322,60 @@
   height: 18px;
 }
 
+/* Emoji Picker */
+.emoji-picker {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.emoji-current {
+  flex-shrink: 0;
+}
+
+.emoji-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background-color: #f0f0f0;
+  border-radius: 50%;
+  font-size: 2rem;
+  border: 2px solid #ddd;
+}
+
+.emoji-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.emoji-option {
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emoji-option:hover {
+  background-color: #f0f0f0;
+  border-color: #ddd;
+}
+
+.emoji-option.selected {
+  background-color: #e3f2fd;
+  border-color: #4a90e2;
+}
+
 .modal-actions {
   display: flex;
   gap: 1rem;

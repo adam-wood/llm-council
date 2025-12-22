@@ -33,6 +33,7 @@ export default function Stage1({ responses }) {
             className={`tab ${activeTab === index ? 'active' : ''}`}
             onClick={() => setActiveTab(index)}
           >
+            {resp.emoji && <span className="tab-emoji">{resp.emoji}</span>}
             {resp.agent_title || resp.model.split('/')[1] || resp.model}
           </button>
         ))}
@@ -41,6 +42,7 @@ export default function Stage1({ responses }) {
       <div className="tab-content">
         <div className="agent-info">
           <div className="agent-name">
+            {currentResponse.emoji && <span className="agent-emoji">{currentResponse.emoji}</span>}
             {currentResponse.agent_title || 'Agent'}
           </div>
           <div className="model-name">{currentResponse.model}</div>

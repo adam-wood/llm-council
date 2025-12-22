@@ -97,3 +97,9 @@
   line-height: 1.7;
   font-size: 15px;
 }
+
+/* Emoji styles */
+.chairman-emoji {
+  margin-right: 8px;
+  font-size: 1.2em;
+}
