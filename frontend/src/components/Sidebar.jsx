@@ -12,7 +12,7 @@ export default function Sidebar({
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <h1>LLM Council</h1>
+        <h1>Personal Boardroom</h1>
         <div className="view-switcher">
           <button
             className={`view-btn ${currentView === 'chat' ? 'active' : ''}`}
@@ -24,7 +24,7 @@ export default function Sidebar({
             className={`view-btn ${currentView === 'agents' ? 'active' : ''}`}
             onClick={() => onViewChange('agents')}
           >
-            Manage Agents
+            Manage Board
           </button>
           <button
             className={`view-btn ${currentView === 'prompts' ? 'active' : ''}`}
