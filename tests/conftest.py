@@ -12,6 +12,15 @@ from unittest.mock import AsyncMock, MagicMock
 # Test user ID for all tests
 TEST_USER_ID = "user_test123"
 
+# Test UUIDs for conversations and agents (deterministic for reproducible tests)
+TEST_CONV_ID_1 = "11111111-1111-1111-1111-111111111111"
+TEST_CONV_ID_2 = "22222222-2222-2222-2222-222222222222"
+TEST_CONV_ID_3 = "33333333-3333-3333-3333-333333333333"
+TEST_AGENT_ID_1 = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+TEST_AGENT_ID_2 = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+TEST_AGENT_ID_3 = "cccccccc-cccc-cccc-cccc-cccccccccccc"
+TEST_INVALID_ID = "not-a-valid-uuid"
+
 
 @pytest.fixture
 def test_user_id():
@@ -37,7 +46,7 @@ def temp_data_dir(monkeypatch):
 def sample_agent():
     """Sample agent configuration."""
     return {
-        "id": "test-agent-1",
+        "id": TEST_AGENT_ID_1,
         "title": "Test Agent",
         "role": "Test role description",
         "model": "test/model-1",
@@ -56,7 +65,7 @@ def sample_agents():
     """Multiple sample agents."""
     return [
         {
-            "id": "agent-1",
+            "id": TEST_AGENT_ID_1,
             "title": "Agent One",
             "role": "First agent",
             "model": "test/model-1",
@@ -66,7 +75,7 @@ def sample_agents():
             "updated_at": "2024-01-01T00:00:00"
         },
         {
-            "id": "agent-2",
+            "id": TEST_AGENT_ID_2,
             "title": "Agent Two",
             "role": "Second agent",
             "model": "test/model-2",
@@ -76,7 +85,7 @@ def sample_agents():
             "updated_at": "2024-01-01T00:00:00"
         },
         {
-            "id": "agent-3",
+            "id": TEST_AGENT_ID_3,
             "title": "Agent Three",
             "role": "Third agent",
             "model": "test/model-3",
@@ -92,7 +101,7 @@ def sample_agents():
 def sample_conversation():
     """Sample conversation."""
     return {
-        "id": "test-conv-1",
+        "id": TEST_CONV_ID_1,
         "created_at": "2024-01-01T00:00:00",
         "title": "Test Conversation",
         "messages": [
@@ -101,7 +110,7 @@ def sample_conversation():
                 "role": "assistant",
                 "stage1": [
                     {
-                        "agent_id": "agent-1",
+                        "agent_id": TEST_AGENT_ID_1,
                         "agent_title": "Agent One",
                         "model": "test/model-1",
                         "response": "Response from agent 1"
@@ -109,7 +118,7 @@ def sample_conversation():
                 ],
                 "stage2": [
                     {
-                        "agent_id": "agent-1",
+                        "agent_id": TEST_AGENT_ID_1,
                         "agent_title": "Agent One",
                         "model": "test/model-1",
                         "ranking": "FINAL RANKING:\n1. Response A",
@@ -161,19 +170,19 @@ def sample_stage1_results():
     """Sample stage 1 results."""
     return [
         {
-            "agent_id": "agent-1",
+            "agent_id": TEST_AGENT_ID_1,
             "agent_title": "Agent One",
             "model": "test/model-1",
             "response": "This is response A with detailed analysis."
         },
         {
-            "agent_id": "agent-2",
+            "agent_id": TEST_AGENT_ID_2,
             "agent_title": "Agent Two",
             "model": "test/model-2",
             "response": "This is response B with alternative perspective."
         },
         {
-            "agent_id": "agent-3",
+            "agent_id": TEST_AGENT_ID_3,
             "agent_title": "Agent Three",
             "model": "test/model-3",
             "response": "This is response C with additional insights."

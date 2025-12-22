@@ -198,6 +198,34 @@ The app is configured for one-click deployment to Railway:
 
 See `Dockerfile` and `railway.toml` for configuration details.
 
+## Security & Privacy
+
+### User Data Isolation
+
+The application enforces strict user data isolation:
+
+1. **Authentication**: Users authenticate via Clerk JWT tokens. The `user_id` is extracted from the verified token and cannot be spoofed by users.
+
+2. **Path-based Isolation**: All user data is stored in separate directories:
+   ```
+   data/users/{user_id}/conversations/{conversation_id}.json
+   data/users/{user_id}/agents.json
+   data/users/{user_id}/prompts.json
+   ```
+
+3. **UUID Validation**: All conversation and agent IDs are validated as proper UUIDs before any file operations, preventing path traversal attacks.
+
+4. **Defense in Depth**:
+   - User IDs always come from verified JWTs, never from user input
+   - All API endpoints require authentication via `Depends(get_current_user_id)`
+   - Storage functions validate ID formats to reject malicious inputs
+
+### Privacy Considerations
+
+- **Data sent to LLM providers**: Your queries are sent to multiple third-party LLM providers via OpenRouter. Be mindful of what information you share.
+- **Local storage**: Conversation history is stored in JSON files on the server.
+- **No encryption at rest**: Data files are stored in plain JSON. For sensitive deployments, consider encrypting the data volume.
+
 ## Contributing
 
 This is an active fork evolving the original concept. See [TODO.md](TODO.md) for the roadmap. Contributions welcome!

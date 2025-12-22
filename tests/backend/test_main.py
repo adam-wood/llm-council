@@ -7,6 +7,9 @@ from backend.main import app
 from backend.auth import get_current_user_id
 from tests.conftest import TEST_USER_ID
 
+# Valid UUID format for testing non-existent resources
+NONEXISTENT_UUID = "99999999-9999-9999-9999-999999999999"
+
 
 def mock_get_current_user_id():
     """Mock auth dependency that returns test user ID."""
@@ -77,7 +80,7 @@ class TestConversationEndpoints:
 
     def test_get_nonexistent_conversation(self, client, temp_data_dir):
         """Test getting conversation that doesn't exist."""
-        response = client.get("/api/conversations/non-existent-id")
+        response = client.get(f"/api/conversations/{NONEXISTENT_UUID}")
 
         assert response.status_code == 404
 
@@ -114,7 +117,7 @@ class TestConversationEndpoints:
     def test_send_message_to_nonexistent_conversation(self, client, temp_data_dir):
         """Test sending message to non-existent conversation."""
         response = client.post(
-            "/api/conversations/non-existent/message",
+            f"/api/conversations/{NONEXISTENT_UUID}/message",
             json={"content": "Test"}
         )
 
@@ -142,7 +145,7 @@ class TestConversationEndpoints:
 
     def test_delete_nonexistent_conversation(self, client, temp_data_dir):
         """Test deleting a conversation that doesn't exist."""
-        response = client.delete("/api/conversations/non-existent-id")
+        response = client.delete(f"/api/conversations/{NONEXISTENT_UUID}")
 
         assert response.status_code == 404
 
@@ -215,7 +218,7 @@ class TestAgentEndpoints:
 
     def test_get_nonexistent_agent(self, client, temp_data_dir):
         """Test getting non-existent agent."""
-        response = client.get("/api/agents/non-existent-id")
+        response = client.get(f"/api/agents/{NONEXISTENT_UUID}")
 
         assert response.status_code == 404
 
@@ -240,7 +243,7 @@ class TestAgentEndpoints:
 
     def test_update_nonexistent_agent(self, client, temp_data_dir):
         """Test updating non-existent agent."""
-        response = client.put("/api/agents/non-existent-id", json={
+        response = client.put(f"/api/agents/{NONEXISTENT_UUID}", json={
             "title": "Updated"
         })
 
@@ -264,7 +267,7 @@ class TestAgentEndpoints:
 
     def test_delete_nonexistent_agent(self, client, temp_data_dir):
         """Test deleting non-existent agent."""
-        response = client.delete("/api/agents/non-existent-id")
+        response = client.delete(f"/api/agents/{NONEXISTENT_UUID}")
 
         assert response.status_code == 404
 
@@ -304,7 +307,7 @@ class TestAgentEndpoints:
 
     def test_set_nonexistent_chairman(self, client, temp_data_dir):
         """Test setting non-existent agent as chairman."""
-        response = client.put("/api/agents/chairman/non-existent-id")
+        response = client.put(f"/api/agents/chairman/{NONEXISTENT_UUID}")
 
         assert response.status_code == 404
 

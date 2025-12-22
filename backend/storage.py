@@ -2,10 +2,30 @@
 
 import json
 import os
+import re
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 from .config import get_user_conversations_dir
+
+# UUID format regex for validating IDs (prevents path traversal attacks)
+UUID_PATTERN = re.compile(r'^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$', re.IGNORECASE)
+
+
+def validate_id(id_value: str, id_type: str = "ID") -> None:
+    """
+    Validate that an ID is a valid UUID format.
+    Prevents path traversal attacks by rejecting IDs with special characters.
+
+    Args:
+        id_value: The ID to validate
+        id_type: Description for error messages (e.g., "conversation_id")
+
+    Raises:
+        ValueError: If the ID is not a valid UUID format
+    """
+    if not id_value or not UUID_PATTERN.match(id_value):
+        raise ValueError(f"Invalid {id_type} format. Expected UUID.")
 
 
 def ensure_user_dir(user_id: str):
@@ -15,6 +35,7 @@ def ensure_user_dir(user_id: str):
 
 def get_conversation_path(user_id: str, conversation_id: str) -> str:
     """Get the file path for a conversation."""
+    validate_id(conversation_id, "conversation_id")
     return os.path.join(get_user_conversations_dir(user_id), f"{conversation_id}.json")
 
 

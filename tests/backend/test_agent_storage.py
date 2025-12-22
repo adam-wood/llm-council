@@ -6,7 +6,10 @@ from pathlib import Path
 from freezegun import freeze_time
 from backend import agent_storage
 from backend.config import get_user_agents_file
-from tests.conftest import TEST_USER_ID
+from tests.conftest import TEST_USER_ID, TEST_INVALID_ID
+
+# A valid UUID that won't exist in test data
+NONEXISTENT_AGENT_ID = "99999999-9999-9999-9999-999999999999"
 
 
 class TestAgentCRUD:
@@ -92,9 +95,14 @@ class TestAgentCRUD:
 
     def test_get_agent_by_id_not_found(self, temp_data_dir, test_user_id):
         """Test retrieving non-existent agent."""
-        result = agent_storage.get_agent_by_id(test_user_id, "non-existent-id")
+        result = agent_storage.get_agent_by_id(test_user_id, NONEXISTENT_AGENT_ID)
 
         assert result is None
+
+    def test_get_agent_by_invalid_id_rejected(self, temp_data_dir, test_user_id):
+        """Test that invalid agent IDs are rejected (path traversal prevention)."""
+        with pytest.raises(ValueError, match="Invalid agent_id format"):
+            agent_storage.get_agent_by_id(test_user_id, TEST_INVALID_ID)
 
     def test_update_agent(self, temp_data_dir, test_user_id):
         """Test updating an agent."""
@@ -139,7 +147,7 @@ class TestAgentCRUD:
 
     def test_update_agent_not_found(self, temp_data_dir, test_user_id):
         """Test updating non-existent agent."""
-        result = agent_storage.update_agent(test_user_id, "non-existent-id", {"title": "New Title"})
+        result = agent_storage.update_agent(test_user_id, NONEXISTENT_AGENT_ID, {"title": "New Title"})
 
         assert result is None
 
@@ -159,7 +167,7 @@ class TestAgentCRUD:
 
     def test_delete_agent_not_found(self, temp_data_dir, test_user_id):
         """Test deleting non-existent agent."""
-        success = agent_storage.delete_agent(test_user_id, "non-existent-id")
+        success = agent_storage.delete_agent(test_user_id, NONEXISTENT_AGENT_ID)
 
         assert success is False
 
@@ -201,7 +209,7 @@ class TestChairmanManagement:
 
     def test_set_nonexistent_chairman(self, temp_data_dir, test_user_id):
         """Test setting non-existent agent as chairman."""
-        success = agent_storage.set_chairman(test_user_id, "non-existent-id")
+        success = agent_storage.set_chairman(test_user_id, NONEXISTENT_AGENT_ID)
 
         assert success is False
 

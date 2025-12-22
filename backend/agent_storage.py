@@ -7,6 +7,7 @@ from datetime import datetime
 import uuid
 
 from .config import get_user_agents_file, get_user_data_dir
+from .storage import validate_id
 
 
 def ensure_user_directory(user_id: str):
@@ -92,6 +93,7 @@ def get_agent_by_id(user_id: str, agent_id: str) -> Optional[Dict[str, Any]]:
     Returns:
         Agent configuration or None if not found
     """
+    validate_id(agent_id, "agent_id")
     agents = get_all_agents(user_id)
     for agent in agents:
         if agent["id"] == agent_id:
@@ -155,6 +157,7 @@ def update_agent(user_id: str, agent_id: str, updates: Dict[str, Any]) -> Option
     Returns:
         Updated agent configuration or None if not found
     """
+    validate_id(agent_id, "agent_id")
     data = load_agents(user_id)
 
     for i, agent in enumerate(data["agents"]):
@@ -183,6 +186,7 @@ def delete_agent(user_id: str, agent_id: str) -> bool:
     Returns:
         True if deleted, False if not found
     """
+    validate_id(agent_id, "agent_id")
     data = load_agents(user_id)
 
     original_length = len(data["agents"])
